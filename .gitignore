@@ -29,6 +29,10 @@
 *.log
 *.sql
 *.sqlite
+
+# Settings file with config info #
+##################################
+audiobonsai/settings.py
  
 # OS generated files #
 ######################

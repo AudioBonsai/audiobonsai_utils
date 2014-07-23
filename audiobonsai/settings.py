@@ -21,7 +21,7 @@ SECRET_KEY = 'u#%@^oxu*lmkh(eu()%fovcpii7p(1ke*h*z4106013vibc5z_'
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
-
+#DEBUG = False
 TEMPLATE_DEBUG = True
 
 ALLOWED_HOSTS = []
@@ -56,10 +56,21 @@ WSGI_APPLICATION = 'audiobonsai.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/1.6/ref/settings/#databases
 
+#DATABASES = {
+#    'default': {
+#        'ENGINE': 'django.db.backends.sqlite3',
+#        'NAME': os.path.join(BASE_DIR, 'db.sqlite3'),
+#    }
+#}
+
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': os.path.join(BASE_DIR, 'db.sqlite3'),
+        'ENGINE': 'django.db.backends.mysql', # Add 'postgresql_psycopg2', 'postgresql', 'mysql', 'sqlite3' or 'oracle'.
+        'NAME': 'audiobonsai_sb',                      # Or path to database file if using sqlite3.
+        'USER': 'audiobonsai_sb',                      # Not used with sqlite3.
+        'PASSWORD': '4th3n5_gr33c3_2004',                  # Not used with sqlite3.
+        'HOST': 'mysql.sandbox.audiobonsai.com',                      # Set to empty string for localhost. Not used with sqlite3.
+        'PORT': '',                      # Set to empty string for default. Not used with sqlite3.
     }
 }
 
