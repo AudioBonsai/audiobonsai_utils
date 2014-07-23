@@ -14,11 +14,4 @@ os.environ['DJANGO_SETTINGS_MODULE'] = "audiobonsai.settings"
 from django.core.wsgi import get_wsgi_application
 application = get_wsgi_application()
 
-print os.getcwd()
 
-from audiobonsai import settings
-print settings.INSTALLED_APPS
-
-from rootball.models import Artist
-prince = Artist(name="Prince")
-print prince.__unicode__()
