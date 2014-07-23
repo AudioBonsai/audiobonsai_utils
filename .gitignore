@@ -32,8 +32,10 @@
 
 # Settings file with config info #
 ##################################
+passenger_wsgi.py
 audiobonsai/settings.py
- 
+public/static 
+
 # OS generated files #
 ######################
 .DS_Store
