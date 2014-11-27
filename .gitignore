@@ -10,6 +10,7 @@
 *.exe
 *.o
 *.so
+*.pyc
  
 # Packages #
 ############
@@ -29,6 +30,7 @@
 *.log
 *.sql
 *.sqlite
+*.sqlite3
 
 # Settings file with config info #
 ##################################

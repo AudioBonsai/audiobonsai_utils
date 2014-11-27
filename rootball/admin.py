@@ -1,5 +1,5 @@
 from django.contrib import admin
-from rootball.models import Artist, ArtistLink, Album, AlbumLink, Song, SongLink
+from rootball.models import Artist, ArtistLink, Album, AlbumLink, Song, SongLink, Playlist, FreshCuts, PodCast
 
 class ArtistLinkInline(admin.StackedInline):
     model = ArtistLink
@@ -34,8 +34,27 @@ class SongAdmin(admin.ModelAdmin):
     ]
     inlines = [SongLinkInline]
 
+
+class PlaylistAdmin(admin.ModelAdmin):
+    fieldsets = [
+        (None, {'fields': ['name']}),
+        ('Optional', {'fields': ['spotifyuri', 'rdiourl']})
+    ]
+
+class FreshCutsAdmin(admin.ModelAdmin):
+    fieldsets = [
+        (None, {'fields': ['date', 'playlist']}),
+    ]
+
+class PodCastAdmin(admin.ModelAdmin):
+    fieldsets = [
+        (None, {'fields': ['episode', 'freshcuts', 'playlist']}),
+    ]
+
 # Register your models here.
 admin.site.register(Artist, ArtistAdmin)
 admin.site.register(Album, AlbumAdmin)
 admin.site.register(Song, SongAdmin)
-
+admin.site.register(Playlist, PlaylistAdmin)
+admin.site.register(FreshCuts, FreshCutsAdmin)
+admin.site.register(PodCast, PodCastAdmin)
