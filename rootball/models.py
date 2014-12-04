@@ -1,5 +1,7 @@
 from django.db import models
 from django.core.urlresolvers import reverse
+import spotipy
+import spotipy.util
 
 class Artist(models.Model):
     name = models.CharField(max_length=255)
@@ -110,6 +112,7 @@ class Playlist(models.Model):
 
     def get_absoulte_url(self):
         return reverse('playlist.views.details', args=[str(self.id)])
+
 
 class PlaylistTrack(models.Model):
     playlist = models.ForeignKey(Playlist)
