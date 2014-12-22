@@ -113,7 +113,6 @@ class Playlist(models.Model):
     def get_absoulte_url(self):
         return reverse('playlist.views.details', args=[str(self.id)])
 
-
 class PlaylistTrack(models.Model):
     playlist = models.ForeignKey(Playlist)
     position = models.IntegerField()
