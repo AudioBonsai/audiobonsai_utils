@@ -9,7 +9,7 @@ class Artist(models.Model):
     def __unicode__(self):
         return self.name
 
-    def get_absoulte_url(self):
+    def get_absolute_url(self):
         return reverse('artist.views.details', args=[str(self.id)])
 
 class ArtistLink(models.Model):
@@ -33,53 +33,48 @@ class ArtistLink(models.Model):
     def __unicode__(self):
         return u'{} ({})'.format(self.artist.__unicode__(), self.source)
 
-    def get_absoulte_url(self):
+    def get_absolute_url(self):
         return reverse('artistlink.views.details', args=[str(self.id)])
 
-class Album(models.Model):
-    artist = models.ForeignKey(Artist)
+class Release(models.Model):
     release_date = models.DateField(null=True, blank=True)
     title = models.CharField(max_length=255)
     spotifyuri = models.CharField(max_length=255, unique=True)
     rdiourl = models.CharField(max_length=255, unique=True)
 
     def __unicode__(self):
-        return u'{} by {}'.format(self.title, self.artist.__unicode__())
+        return u'{} released on {}'.format(self.title, self.release_date)
 
-    def get_absoulte_url(self):
+    def get_absolute_url(self):
         return reverse('album.views.details', args=[str(self.id)])
 
-class AlbumLink(models.Model):
+class ReleaseLink(models.Model):
     SOURCE_CHOICES = (
         ('iTunes', 'iTunes'),
         ('SoundCloud', 'SoundCloud'),
         ('Spotify', 'Spotify'),
         ('Rdio', 'Rdio')
     )
-    album = models.ForeignKey(Album)
+    release = models.ForeignKey(Release)
     source = models.CharField(max_length=255, choices=SOURCE_CHOICES)
     source_id = models.CharField(max_length=255)
 
     def __unicode__(self):
         return u'{} ({})'.format(self.album.__unicode__(), self.source)
 
-    def get_absoulte_url(self):
+    def get_absolute_url(self):
         return reverse('albumlink.views.details', args=[str(self.id)])
 
 
 class Song(models.Model):
-    album = models.ForeignKey(Album, null=True, blank=True)
-    artist = models.ForeignKey(Artist)
     title = models.CharField(max_length=255)
     spotifyuri = models.CharField(max_length=255, unique=True)
     rdiourl = models.CharField(max_length=255, unique=True)
-    sotd = models.DateField(null=True, blank=True, verbose_name="Song of the Day")
-    sotw = models.DateField(null=True, blank=True, verbose_name="Song of the Week")
 
     def __unicode__(self):
-        return u'{} by {}'.format(self.title, self.artist.__unicode__())
+        return u'{}'.format(self.title)
 
-    def get_absoulte_url(self):
+    def get_absolute_url(self):
         return reverse('song.views.details', args=[str(self.id)])
 
 
@@ -98,9 +93,29 @@ class SongLink(models.Model):
     def __unicode__(self):
         return u'{} ({})'.format(self.song.__unicode__(), self.source)
 
-    def get_absoulte_url(self):
+    def get_absolute_url(self):
         return reverse('songlink.views.details', args=[str(self.id)])
 
+class ReleasedOn(models.Model):
+    song = models.ForeignKey(Song)
+    release = models.ForeignKey(Release)
+
+    def __unicode__(self):
+        return u'{} from {}'.format(self.song.__unicode__(), self.release.__unicode__())
+
+    def get_absolute_url(self):
+        return reverse('releasedon.views.details', args=[str(self.id)])
+
+
+class PerformedBy(models.Model):
+    song = models.ForeignKey(Song)
+    artist = models.ForeignKey(Artist)
+
+    def __unicode__(self):
+        return u'{} performed by {}'.format(self.song.__unicode__(), self.artist.__unicode__())
+
+    def get_absolute_url(self):
+        return reverse('performedby.views.details', args=[str(self.id)])
 
 class Playlist(models.Model):
     name = models.CharField(max_length=255)
@@ -110,7 +125,7 @@ class Playlist(models.Model):
     def __unicode__(self):
         return u'{}'.format(self.name)
 
-    def get_absoulte_url(self):
+    def get_absolute_url(self):
         return reverse('playlist.views.details', args=[str(self.id)])
 
 class PlaylistTrack(models.Model):
@@ -121,7 +136,7 @@ class PlaylistTrack(models.Model):
     def __unicode__(self):
         return u'{} ({}): {}'.format(self.playlist.__unicode__(), self.position, self.song.__unicode__())
 
-    def get_absoulte_url(self):
+    def get_absolute_url(self):
         return reverse('playlisttrack.views.details', args=[str(self.id)])
 
 class FreshCuts(models.Model):
@@ -131,16 +146,26 @@ class FreshCuts(models.Model):
     def __unicode__(self):
         return u'Fresh Cuts {}'.format(self.date)
 
-    def get_absoulte_url(self):
+    def get_absolute_url(self):
         return reverse('freshcuts.views.details', args=[str(self.id)])
 
 class PodCast(models.Model):
-    episode = models.IntegerField()
-    freshcuts = models.ForeignKey(FreshCuts)
+    episode = models.CharField(max_length=255)
     playlist = models.ForeignKey(Playlist)
     
     def __unicode__(self):
-        return u'EP{} ({})'.format(self.episode, self.freshcuts.__unicode__())
+        return self.episode
 
-    def get_absoulte_url(self):
+    def get_absolute_url(self):
         return reverse('podcast.views.details', args=[str(self.id)])
+
+class PodCastSource(models.Model):
+    podcast = models.ForeignKey(PodCast)
+    freshcuts = models.ForeignKey(FreshCuts)
+
+    def __unicode__(self):
+        return u'{} source fresh cuts list {}'.format(self.podcast.__unicode__(), self.freshcuts.__unicode__())
+
+    def get_absolute_url(self):
+        return reverse('podcastsource.views.details', args=[str(self.id)])
+

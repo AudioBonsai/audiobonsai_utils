@@ -1,4 +1,5 @@
 import sys
+import datetime
 import os
 import django
 import re
@@ -28,7 +29,7 @@ def getSpotifyConn(username='AudioBonsai', scope='user-library-read'):
     return sp
 
 
-def parseList(playlist, spots=10, tracks={}, username='AudioBonsai', scope='user-library-read'):
+def parseList(playlist, spots=10, tracks={}, week="MM/DD/YYYY", username='AudioBonsai', scope='user-library-read'):
     '''
     parseList -- read the provided list and score the tracks based on position
     '''
@@ -61,38 +62,64 @@ def parseList(playlist, spots=10, tracks={}, username='AudioBonsai', scope='user
         tracks[uri]['title'] = track[u'track'][u'name']
         tracks[uri][username] = rank
         tracks[uri]['score'] += math.pow((spots-rank+1), 2)
+        tracks[uri]['week'] = week
         rank += 1
         if rank > spots:
             break
 
-def scoreVotes(tracks, bonus=49):
+def scoreVotes(tracks, bonus=49, sotds=[4, 0, 3, 1, 5, 2, 6]):
     '''
     scoreVotes -- combine the scores from the individual lists including adding the two-vote bonus
     '''
     results = {}
+    resultsByWeek = {}
     for uri in tracks:
+        week = tracks[uri]['week']
+        week_str = week.strftime('%m/%d/%Y')
         score = tracks[uri]['score']
-        display_str = u'\n\tArtist: {0}\n\tSong:\'{1}\'\n\tAlbum:{2}\n'.format(tracks[uri]['artists'], tracks[uri]['title'], tracks[uri]['album'])
+        display_str = u'\n\tArtist: {0}\n\tSong:\'{1}\'\n\tAlbum:{2}\n\tFresh Cuts:{3}\n'.format(tracks[uri]['artists'], tracks[uri]['title'], tracks[uri]['album'], week_str)
         vote_count = 0
         vote_rank = 25
         vote_string = 'Honorable Mention'
         for key in tracks[uri]:   
-            if key not in ['artists', 'album', 'title', 'score']:
+            if key not in ['artists', 'album', 'title', 'score', 'week']:
                 if tracks[uri][key] < vote_rank:
                     vote_string = key
                     vote_rank = tracks[uri][key]
                 display_str += u'\t{0}\'s #{1}\n'.format(key, unicode(tracks[uri][key]))
                 vote_count += 1
         display_str = u'{0} {1}'.format(vote_string, display_str)
+        tracks[uri]['display_str'] = display_str
 
         if vote_count > 1:
             score += bonus
         if score not in results.keys():
             results[score] = []
-        results[score].append(display_str)
+        results[score].append(uri)
+        
+        if week_str not in resultsByWeek.keys():
+            print 'Creating week_str key: {}'.format(week_str)
+            resultsByWeek[week_str] = {}
+        if score not in resultsByWeek[week_str].keys():
+            resultsByWeek[week_str][score] = []
+        resultsByWeek[week_str][score].append(uri)
+    for week in resultsByWeek:
+        sotd = 0;
+        week_datetime = datetime.datetime.strptime(week, '%m/%d/%Y') + datetime.timedelta(days=2)
+        for score in reversed(sorted(resultsByWeek[week])):
+            for uri in resultsByWeek[week][score]:
+                print 'week:{}, score:{}, uri:{} sotd:{}'.format(week, score, uri, sotd)
+                sotd_datetime = week_datetime + datetime.timedelta(days=sotds[sotd])
+                tracks[uri]['display_str'] += u'\tSOTD:{}\n'.format(sotd_datetime.strftime('%A %m/%d/%Y'))
+                sotd += 1
+                if sotd >= len(sotds):
+                    break
+            if sotd >= len(sotds):
+                break
+                    
     return results
  
-def printResults(results, spots=10, rank=25):
+def printResults(results, tracks, spots=10, rank=25):
     '''
     printResults -- write out the results as a playlist and document
     '''
@@ -105,14 +132,14 @@ def printResults(results, spots=10, rank=25):
             rank_str = str(rank)
             if rank > spots:
                 rank_str = "HM"
-            print u'{0:2} ({1:3} points): {2}\n'.format(rank_str, str(score), entry)
+            print u'{0:2} ({1:3} points): {2}\n'.format(rank_str, str(score), tracks[entry]['display_str'])
             new_rank -= 1
             if new_rank == spots:
                 print "You put your themes in it\n"
                 print "Tracy's Pick of the Week\n"
-                print "Now Entering, the top ten\n"
-            elif new_rank == 7:
-                print "Songs of the Day (plug if available?)\n\nOur top seven songs will also be featured at AudioBonsai.com as songs of the day.  Each day (or as often as our busy lives allow, which means sometimes you'll get five songs for the price of one!) one of these songs will be highlighted on our website.  We also have a Song of the Day playlist on Spotify and Rdio that you can subscribe to for our last eight weeks of songs of the day.\n"
+                #print "Now Entering, the top ten\n"
+            #elif new_rank == 7:
+                #print "Songs of the Day (plug if available?)\n\nOur top seven songs will also be featured at AudioBonsai.com as songs of the day.  Each day (or as often as our busy lives allow, which means sometimes you'll get five songs for the price of one!) one of these songs will be highlighted on our website.  We also have a Song of the Day playlist on Spotify and Rdio that you can subscribe to for our last eight weeks of songs of the day.\n"
 
         rank = new_rank
     print "outro)\n\nThanks for listening.  All of the songs we played samples of in this podcast will be embedded in their full glory on this episode's post.  The top seven will be featured as our Songs of the Day for the week.    If you would like to play along, subscribe to the Fresh Cuts: ReFresh list on Spotify and Rdio.  Let us know your favorite before we record Thursday evening via Twitter, Facebook or our website at AudioBonsai.com or leave us a voice mail telling us who you are and what your favorite is at 952-22-AUDIO.  That's 952-222-8346. If you have your pick to us by Thursday night when we record we can work it into the show.  Get it in by Sunday and we can probably duct tape it in awkwardly somewhere.  Monday or later, we can have a nice chat while you listen to what could have been. We hope you found something to love in this episode and we'll see you again next week. "   
@@ -125,10 +152,11 @@ if __name__ == "__main__":
     spots = 10
     bonus = 49
     tracks = {}
-    for playlist in [settings.JESSE_TOP_TEN, settings.MOKSHA_TOP_TEN]:
-        parseList(playlist, spots, tracks)
+    for playlist, week in zip([settings.JESSE_TOP_TEN, settings.MOKSHA_TOP_TEN, settings.JESSE_TOP_TEN_2, settings.MOKSHA_TOP_TEN_2], [datetime.datetime.strptime("02/03/2015", "%m/%d/%Y"), datetime.datetime.strptime("02/03/2015", "%m/%d/%Y"), datetime.datetime.strptime("02/10/2015", "%m/%d/%Y"), datetime.datetime.strptime("02/10/2015", "%m/%d/%Y")]):
+        #print "{}: {}".format(week.strftime("%A, %m/%d/%Y"), playlist)
+        parseList(playlist, spots, tracks, week)
 
     results = scoreVotes(tracks, bonus)
 
     rank = len(tracks)
-    printResults(results, spots, rank)
+    printResults(results, tracks, 14, rank)
