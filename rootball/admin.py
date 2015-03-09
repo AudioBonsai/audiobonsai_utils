@@ -28,9 +28,7 @@ class SongLinkInline(admin.StackedInline):
 
 class SongAdmin(admin.ModelAdmin):
     fieldsets = [
-        (None, {'fields': ['title', 'artist']}),
-        ('Optional', {'fields': ['album']}),
-        ('Honors', {'fields': ['sotd', 'sotw']})
+        (None, {'fields': ['title']})
     ]
     inlines = [SongLinkInline]
 
