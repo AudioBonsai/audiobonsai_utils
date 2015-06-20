@@ -35,10 +35,13 @@ def parseList(playlist, spots=10, tracks={}, week="MM/DD/YYYY", username='AudioB
     '''
     sp = getSpotifyConn(username, scope)
     bits = re.match('spotify:user:([a-z,A-Z,0-9]*):playlist:([a-z,A-Z,0-9]*)', playlist)
+    print bits.group(1)
     user_info = sp.user(bits.group(1))
     username = user_info[u'display_name']
     if re.match(username, 'Justin Tyler'):
         username = 'Moksha'
+    elif re.match(username, 'Rodrigo Venegas'):
+        username = 'Podrigo'
     else:
         username = 'Jesse'
     #pprint(user_info)
@@ -88,11 +91,13 @@ def scoreVotes(tracks, bonus=49, sotds=[4, 0, 3, 1, 5, 2, 6]):
                     vote_rank = tracks[uri][key]
                 display_str += u'\t{0}\'s #{1}\n'.format(key, unicode(tracks[uri][key]))
                 vote_count += 1
-        display_str = u'{0} {1}'.format(vote_string, display_str)
+        #display_str = u'{0} {1}'.format(vote_string, display_str)
         tracks[uri]['display_str'] = display_str
 
-        if vote_count > 1:
-            score += bonus
+        if vote_count == 2:
+            score += 25
+        elif vote_count == 3:
+            score += 51
         if score not in results.keys():
             results[score] = []
         results[score].append(uri)
@@ -110,7 +115,8 @@ def scoreVotes(tracks, bonus=49, sotds=[4, 0, 3, 1, 5, 2, 6]):
             for uri in resultsByWeek[week][score]:
                 print 'week:{}, score:{}, uri:{} sotd:{}'.format(week, score, uri, sotd)
                 sotd_datetime = week_datetime + datetime.timedelta(days=sotds[sotd])
-                tracks[uri]['display_str'] += u'\tSOTD:{}\n'.format(sotd_datetime.strftime('%A %m/%d/%Y'))
+                #tracks[uri]['display_str'] += u'\tSOTD:{}\n'.format(sotd_datetime.strftime('%A %m/%d/%Y'))
+                tracks[uri]['display_str'] += u'\tSOTD\n'
                 sotd += 1
                 if sotd >= len(sotds):
                     break
@@ -136,7 +142,7 @@ def printResults(results, tracks, spots=10, rank=25):
             new_rank -= 1
             if new_rank == spots:
                 print "You put your themes in it\n"
-                print "Tracy's Pick of the Week\n"
+                print "Tracy's Expansion of Presence Spotlight\n"
                 #print "Now Entering, the top ten\n"
             #elif new_rank == 7:
                 #print "Songs of the Day (plug if available?)\n\nOur top seven songs will also be featured at AudioBonsai.com as songs of the day.  Each day (or as often as our busy lives allow, which means sometimes you'll get five songs for the price of one!) one of these songs will be highlighted on our website.  We also have a Song of the Day playlist on Spotify and Rdio that you can subscribe to for our last eight weeks of songs of the day.\n"
@@ -152,8 +158,10 @@ if __name__ == "__main__":
     spots = 10
     bonus = 49
     tracks = {}
-    for playlist, week in zip([settings.JESSE_TOP_TEN, settings.MOKSHA_TOP_TEN, settings.JESSE_TOP_TEN_2, settings.MOKSHA_TOP_TEN_2], [datetime.datetime.strptime("02/03/2015", "%m/%d/%Y"), datetime.datetime.strptime("02/03/2015", "%m/%d/%Y"), datetime.datetime.strptime("02/10/2015", "%m/%d/%Y"), datetime.datetime.strptime("02/10/2015", "%m/%d/%Y")]):
-        #print "{}: {}".format(week.strftime("%A, %m/%d/%Y"), playlist)
+    for playlist, week in zip([settings.JESSE_TOP_TEN, settings.MOKSHA_TOP_TEN, settings.PODRIGO_TOP_TEN_1, settings.JESSE_TOP_TEN_2, settings.MOKSHA_TOP_TEN_2, settings.PODRIGO_TOP_TEN_2],
+                              [datetime.datetime.strptime("06/09/2015", "%m/%d/%Y"), datetime.datetime.strptime("06/09/2015", "%m/%d/%Y"), datetime.datetime.strptime("06/09/2015", "%m/%d/%Y"),
+                               datetime.datetime.strptime("06/16/2015", "%m/%d/%Y"), datetime.datetime.strptime("06/16/2015", "%m/%d/%Y"), datetime.datetime.strptime("06/16/2015", "%m/%d/%Y")]):
+        print "{}: {}".format(week.strftime("%A, %m/%d/%Y"), playlist)
         parseList(playlist, spots, tracks, week)
 
     results = scoreVotes(tracks, bonus)

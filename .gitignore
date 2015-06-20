@@ -29,8 +29,8 @@
 ######################
 *.log
 *.sql
-*.sqlite
-*.sqlite3
+*.sqlite*
+*.sqlite3*
 
 # Settings file with config info #
 ##################################
