@@ -38,13 +38,19 @@ def parseList(playlist, spots=10, tracks={}, week="MM/DD/YYYY", username='AudioB
     print bits.group(1)
     user_info = sp.user(bits.group(1))
     username = user_info[u'display_name']
-    if re.match(username, 'Justin Tyler'):
+    print(bits.group(2))
+    if re.match(bits.group(2), '17jPvBJvGEdCv26ht1gVm5'):
+        username = 'Meg'
+    elif re.match(username, 'Justin Tyler'):
         username = 'Moksha'
     elif re.match(username, 'Rodrigo Venegas'):
         username = 'Podrigo'
+    elif re.match(username, 'Heidi Wheelock'):
+        username = 'Heidi'
     else:
         username = 'Jesse'
     #pprint(user_info)
+    print(username)
     rank = 1
     playlist = sp.user_playlist(user=bits.group(1), playlist_id=bits.group(2))
     playlist_name = playlist[u'name']
@@ -95,9 +101,11 @@ def scoreVotes(tracks, bonus=49, sotds=[4, 0, 3, 1, 5, 2, 6]):
         tracks[uri]['display_str'] = display_str
 
         if vote_count == 2:
-            score += 25
+            score += 49
         elif vote_count == 3:
-            score += 51
+            score += 25
+        elif vote_count == 4:
+            score += 49
         if score not in results.keys():
             results[score] = []
         results[score].append(uri)
@@ -158,9 +166,12 @@ if __name__ == "__main__":
     spots = 10
     bonus = 49
     tracks = {}
-    for playlist, week in zip([settings.JESSE_TOP_TEN, settings.MOKSHA_TOP_TEN, settings.PODRIGO_TOP_TEN_1, settings.JESSE_TOP_TEN_2, settings.MOKSHA_TOP_TEN_2, settings.PODRIGO_TOP_TEN_2],
-                              [datetime.datetime.strptime("06/09/2015", "%m/%d/%Y"), datetime.datetime.strptime("06/09/2015", "%m/%d/%Y"), datetime.datetime.strptime("06/09/2015", "%m/%d/%Y"),
-                               datetime.datetime.strptime("06/16/2015", "%m/%d/%Y"), datetime.datetime.strptime("06/16/2015", "%m/%d/%Y"), datetime.datetime.strptime("06/16/2015", "%m/%d/%Y")]):
+    for playlist, week in zip([settings.JESSE_TOP_TEN, settings.MOKSHA_TOP_TEN, settings.JESSE_TOP_TEN_2, settings.MOKSHA_TOP_TEN_2],
+                              [datetime.datetime.strptime("08/28/2015", "%m/%d/%Y"), datetime.datetime.strptime("08/28/2015", "%m/%d/%Y"),
+                               datetime.datetime.strptime("09/04/2015", "%m/%d/%Y"), datetime.datetime.strptime("09/04/2015", "%m/%d/%Y")]):
+    #for playlist, week in zip([settings.JESSE_TOP_TEN, settings.MOKSHA_TOP_TEN, settings.HEIDI_TOP_TEN, settings.MEG_TOP_TEN],
+    #                          [datetime.datetime.strptime("08/07/2015", "%m/%d/%Y"), datetime.datetime.strptime("08/07/2015", "%m/%d/%Y"),
+    #                           datetime.datetime.strptime("08/07/2015", "%m/%d/%Y"), datetime.datetime.strptime("08/07/2015", "%m/%d/%Y")]):
         print "{}: {}".format(week.strftime("%A, %m/%d/%Y"), playlist)
         parseList(playlist, spots, tracks, week)
 
