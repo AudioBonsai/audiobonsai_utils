@@ -4,7 +4,13 @@ from django.core.urlresolvers import reverse
 class Artist(models.Model):
     name = models.CharField(max_length=255)
     spotifyuri = models.CharField(max_length=255)
-    rdiourl = models.CharField(max_length=255)
+    rdiourl = models.URLField(max_length=255)
+    website = models.URLField(max_length=255)
+    twitter = models.CharField(max_length=255)
+    facebook = models.URLField(max_length=255)
+    soundcloud = models.URLField(max_length=255)
+    bandcamp = models.URLField(max_length=255)
+    youtube = models.URLField(max_length=255)
 
     def get_artist_by_spotify_uri(self, artist_uri, artist_name):
         match_list = Artist.objects.filter(spotifyuri=artist_uri)
@@ -23,35 +29,20 @@ class Artist(models.Model):
     def get_absolute_url(self):
         return reverse('artist.views.details', args=[str(self.id)])
 
-class ArtistLink(models.Model):
-    SOURCE_CHOICES = (
-        ('Website', 'Website'),
-        ('Spotify', 'Spotify'),
-        ('Rdio', 'Rdio'),
-        ('SoundCloud', 'SoundCloud'),
-        ('BandCamp', 'BandCamp'),
-        ('Twitter', 'Twitter'),
-        ('Facebook', 'Facebook'),
-        ('YouTube', 'YouTube'),
-        ('Instagram', 'Instagram')
-    )
-    artist = models.ForeignKey(Artist)
-    source = models.CharField(max_length=255, choices=SOURCE_CHOICES)
-    source_id = models.CharField(max_length=255)
-    spotifyuri = models.CharField(max_length=255, unique=True)
-    rdiourl = models.CharField(max_length=255)
-
-    def __unicode__(self):
-        return u'{} ({})'.format(self.artist.__unicode__(), self.source)
-
-    def get_absolute_url(self):
-        return reverse('artistlink.views.details', args=[str(self.id)])
-
 class Release(models.Model):
     release_date = models.DateField(null=True, blank=True)
     title = models.CharField(max_length=255)
     spotifyuri = models.CharField(max_length=255, unique=True)
-    rdiourl = models.CharField(max_length=255)
+    rdiourl = models.URLField(max_length=255)
+    itunes = models.URLField(max_length=255)
+    soundcloud = models.URLField(max_length=255)
+    bandcamp = models.URLField(max_length=255)
+
+    RELEASE_TYPE_CHOICES = (
+        ('Single', 'Single'),
+        ('EP', 'EP'),
+        ('LP', 'LP')
+    )
 
     def get_release_by_spotify_uri(self, album_uri, album_name):
         match_list = Release.objects.filter(spotifyuri=album_uri)
@@ -70,28 +61,14 @@ class Release(models.Model):
     def get_absolute_url(self):
         return reverse('album.views.details', args=[str(self.id)])
 
-class ReleaseLink(models.Model):
-    SOURCE_CHOICES = (
-        ('iTunes', 'iTunes'),
-        ('SoundCloud', 'SoundCloud'),
-        ('Spotify', 'Spotify'),
-        ('Rdio', 'Rdio')
-    )
-    release = models.ForeignKey(Release)
-    source = models.CharField(max_length=255, choices=SOURCE_CHOICES)
-    source_id = models.CharField(max_length=255)
-
-    def __unicode__(self):
-        return u'{} ({})'.format(self.album.__unicode__(), self.source)
-
-    def get_absolute_url(self):
-        return reverse('albumlink.views.details', args=[str(self.id)])
-
-
 class Song(models.Model):
     title = models.CharField(max_length=255)
     spotifyuri = models.CharField(max_length=255, unique=True)
-    rdiourl = models.CharField(max_length=255)
+    rdiourl = models.URLField(max_length=255)
+    itunes = models.URLField(max_length=255)
+    soundcloud = models.URLField(max_length=255)
+    bandcamp = models.URLField(max_length=255)
+    youtube = models.URLField(max_length=255)
 
     def get_song_by_spotify_uri(self, song_uri, song_title):
         match_list = Song.objects.filter(spotifyuri=song_uri)
@@ -109,41 +86,6 @@ class Song(models.Model):
 
     def get_absolute_url(self):
         return reverse('song.views.details', args=[str(self.id)])
-
-
-class SongLink(models.Model):
-    SOURCE_CHOICES = (
-        ('YouTube', 'YouTube'),
-        ('Spotify', 'Spotify'),
-        ('Rdio', 'Rdio'),
-        ('SoundCloud', 'SoundCloud'),
-        ('BandCamp', 'BandCamp')
-    )
-    song = models.ForeignKey(Song)
-    source = models.CharField(max_length=255, choices=SOURCE_CHOICES)
-    source_id = models.CharField(max_length=255)
-    
-    def __unicode__(self):
-        return u'{} ({})'.format(self.song.__unicode__(), self.source)
-
-    def get_absolute_url(self):
-        return reverse('songlink.views.details', args=[str(self.id)])
-
-class ReleasedOn(models.Model):
-    song = models.ForeignKey(Song)
-    release = models.ForeignKey(Release)
-
-    def set_link(self, release_obj, song_obj):
-        self.release = release_obj
-        self.song = song_obj
-        self.save()
-
-    def __unicode__(self):
-        return u'{} from {}'.format(self.song.__unicode__(), self.release.__unicode__())
-
-    def get_absolute_url(self):
-        return reverse('releasedon.views.details', args=[str(self.id)])
-
 
 class PerformedBy(models.Model):
     song = models.ForeignKey(Song)
@@ -182,18 +124,23 @@ class Playlist(models.Model):
             release_obj = Release()
             release_obj = release_obj.get_release_by_spotify_uri(track[u'track'][u'album'][u'uri'],
                                                                  track[u'track'][u'album'][u'name'])
-            released_on_obj = ReleasedOn()
-            released_on_obj.set_link(release_obj, song_obj)
         self.save()
 
-    def get_playlist_by_spotify_uri(self, playlist_uri):
+    def parse_rdio_list(self, rdioclient, rdiohash):
+        for trackKey in rdiohash[u'trackKeys']:
+            track = rdioclient.call('get', keys=trackKey)
+            print('\'{}\' by {} from {}'.format(track[trackKey][u'name'], track[trackKey][u'artist'], track[trackKey][u'album']))
+
+    def get_playlist_by_uri(self, playlist_uri):
         match_list = Playlist.objects.filter(spotifyuri=playlist_uri)
         if len(match_list) == 0:
-            playlist_obj = Playlist()
-            playlist_obj.spotifyuri = playlist_uri
-            playlist_obj.save()
-        else:
-            playlist_obj = match_list[0]
+            match_list = Playlist.objects.filter(rdiourl=playlist_uri)
+            if len(match_list) == 0:
+                playlist_obj = Playlist()
+                playlist_obj.spotifyuri = playlist_uri
+                playlist_obj.save()
+            else:
+                playlist_obj = match_list[0]
         return playlist_obj
 
     def __unicode__(self):
@@ -223,14 +170,16 @@ class FreshCuts(models.Model):
     date = models.DateField()
     playlist = models.ForeignKey(Playlist)
 
-    def get_freshcuts_by_date_spotifyuri(self, pubdate, spotifyuri, splist):
+    def get_freshcuts_by_date_spotifyuri(self, pubdate, spotifyuri, splist): #, rdioclient, rdiourl, rdiohash):
         match_list = FreshCuts.objects.filter(date=pubdate)
         if len(match_list) == 0:
             freshcuts_obj = FreshCuts()
             freshcuts_obj.date = pubdate
             pl = Playlist()
-            pl = pl.get_playlist_by_spotify_uri(spotifyuri)
+            pl = pl.get_playlist_by_uri(spotifyuri)
+            #pl.rdiourl = rdiourl
             pl.parse_spotify_list(splist)
+            #pl.parse_rdio_list(rdioclient, rdiohash)
             freshcuts_obj.playlist = pl
             freshcuts_obj.save()
         else:
@@ -243,23 +192,4 @@ class FreshCuts(models.Model):
     def get_absolute_url(self):
         return reverse('freshcuts.views.details', args=[str(self.id)])
 
-class PodCast(models.Model):
-    episode = models.CharField(max_length=255)
-    playlist = models.ForeignKey(Playlist)
-    
-    def __unicode__(self):
-        return self.episode
-
-    def get_absolute_url(self):
-        return reverse('podcast.views.details', args=[str(self.id)])
-
-class PodCastSource(models.Model):
-    podcast = models.ForeignKey(PodCast)
-    freshcuts = models.ForeignKey(FreshCuts)
-
-    def __unicode__(self):
-        return u'{} source fresh cuts list {}'.format(self.podcast.__unicode__(), self.freshcuts.__unicode__())
-
-    def get_absolute_url(self):
-        return reverse('podcastsource.views.details', args=[str(self.id)])
 

@@ -39,8 +39,8 @@ def parseList(playlist, spots=10, tracks={}, week="MM/DD/YYYY", username='AudioB
     user_info = sp.user(bits.group(1))
     username = user_info[u'display_name']
     print(bits.group(2))
-    if re.match(bits.group(2), '17jPvBJvGEdCv26ht1gVm5'):
-        username = 'Meg'
+    if re.match(bits.group(2), '3VJeSXOvl8vtleJiLI5AoX'):
+        username = 'Gary & Ciaran'
     elif re.match(username, 'Justin Tyler'):
         username = 'Moksha'
     elif re.match(username, 'Rodrigo Venegas'):
@@ -100,9 +100,9 @@ def scoreVotes(tracks, bonus=49, sotds=[4, 0, 3, 1, 5, 2, 6]):
         #display_str = u'{0} {1}'.format(vote_string, display_str)
         tracks[uri]['display_str'] = display_str
 
-        if vote_count == 2:
-            score += 49
-        elif vote_count == 3:
+        if vote_count == 3:
+            score += 51
+        elif vote_count == 2:
             score += 25
         elif vote_count == 4:
             score += 49
@@ -166,9 +166,9 @@ if __name__ == "__main__":
     spots = 10
     bonus = 49
     tracks = {}
-    for playlist, week in zip([settings.JESSE_TOP_TEN, settings.MOKSHA_TOP_TEN, settings.JESSE_TOP_TEN_2, settings.MOKSHA_TOP_TEN_2],
-                              [datetime.datetime.strptime("08/28/2015", "%m/%d/%Y"), datetime.datetime.strptime("08/28/2015", "%m/%d/%Y"),
-                               datetime.datetime.strptime("09/04/2015", "%m/%d/%Y"), datetime.datetime.strptime("09/04/2015", "%m/%d/%Y")]):
+    for playlist, week in zip([settings.JESSE_TOP_TEN, settings.MOKSHA_TOP_TEN_2, settings.JESSE_TOP_TEN_2],#, settings.MOKSHA_TOP_TEN_2],
+                              [datetime.datetime.strptime("10/16/2015", "%m/%d/%Y"), datetime.datetime.strptime("10/16/2015", "%m/%d/%Y"),
+                               datetime.datetime.strptime("10/16/2015", "%m/%d/%Y")]):#, datetime.datetime.strptime("10/02/2015", "%m/%d/%Y")]):
     #for playlist, week in zip([settings.JESSE_TOP_TEN, settings.MOKSHA_TOP_TEN, settings.HEIDI_TOP_TEN, settings.MEG_TOP_TEN],
     #                          [datetime.datetime.strptime("08/07/2015", "%m/%d/%Y"), datetime.datetime.strptime("08/07/2015", "%m/%d/%Y"),
     #                           datetime.datetime.strptime("08/07/2015", "%m/%d/%Y"), datetime.datetime.strptime("08/07/2015", "%m/%d/%Y")]):

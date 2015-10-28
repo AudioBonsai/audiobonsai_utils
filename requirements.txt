@@ -1,5 +1,4 @@
-Django==1.7.1
-MySQL-python==1.2.5
+Django==1.8.4
 Pillow==2.5.1
 Rdio==0.3.0
 argparse==1.2.1
@@ -9,7 +8,7 @@ oauth2==1.5.211
 pbr==0.10.0
 requests==2.4.3
 six==1.8.0
-spotipy==2.3.0
+spotipy==2.3.7
 stevedore==1.1.0
 virtualenv==1.11.6
 virtualenv-clone==0.2.5
