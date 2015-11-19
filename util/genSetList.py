@@ -86,7 +86,7 @@ def parseList(playlist, spots=10, tracks={}, week="MM/DD/YYYY", username='AudioB
     #return [username, '<iframe src="https://embed.spotify.com/?uri=spotify:trackset:Top Ten by {0}:{1}" width="480" height="540" frameborder="0" allowtransparency="true"></iframe>'.format(username, ', '.join(votes_list))]
     return [username, username, playlist_embed(username, 'Top Ten by {0}: {1}'.format(username, week.strftime("%B %d, %Y")), track_list=votes_list)]
 
-def playlist_embed(id, name, track_list=None, playlist_uri=None, display=False):
+def playlist_embed(id, name, track_list=None, playlist_uri=None, display=False, curator_refresh=False):
     display_str = ' '
     if not display:
         display_str = 'style="display:none"'
@@ -100,8 +100,15 @@ def playlist_embed(id, name, track_list=None, playlist_uri=None, display=False):
         print([sp._get_uri("track", tid) for tid in track_list])
         print("users/%s/playlists/%s/tracks" % (sp.current_user()[u'id'], sp._get_id('playlist', playlist_uri)))
         sp.user_playlist_add_tracks(sp.current_user()[u'id'], playlist_uri, track_list)
+        if curator_refresh:
+            sp.user_playlist_replace_tracks(sp.current_user()[u'id'], settings.CURATOR_REFRESH, track_list)
         #return '<div id="{2}" {3}><iframe src="https://embed.spotify.com/?uri=spotify:trackset:{0}:{1}" {2} width="480" height="540" frameborder="0" allowtransparency="true"></iframe></div>'.format(name, ', '.join(track_list), id, display_str)
     return '<div id="{0}" {1}><iframe src="https://embed.spotify.com/?uri={2}" width="480" height="540" frameborder="0" allowtransparency="true"></iframe></div>'.format(id, display_str, playlist_uri)
+
+def append_sotds(track_list):
+    sp = getSpotifyConn()
+    sp.user_playlist_add_tracks(sp.current_user()[u'id'], settings.SOTD, track_list)
+    sp.user_playlist_add_tracks(sp.current_user()[u'id'], settings.SOTD_YEARLY, track_list)
 
 def gen_buttons(playlist_ids, playlist_names):
     buttons = []
@@ -194,15 +201,19 @@ def printResults(results, tracks, week, freshcuts, playlists, spots=10, rank=25)
 
     hm_print = False
     votes_list = []
+    sotd_list = []
     display_list = ['<div class="sotd">Songs of the Day</div><hr width="100%"</div>']
     for score in reversed(sorted(results)):
         new_rank = rank
         for entry in results[score]:
             rank_str = str(rank)
-            if rank >= spots+1 and not hm_print:
-                #rank_str = "Honorable Mention"
-                display_list.append('<div style="sotd">Honorable Mentions</div><hr width="100%"</div>')
-                hm_print = True
+            if rank >= spots+1:
+                if not hm_print:
+                    #rank_str = "Honorable Mention"
+                    display_list.append('<div style="sotd">Honorable Mentions</div><hr width="100%"</div>')
+                    hm_print = True
+            else:
+                sotd_list.append(entry)
             #print u'{0:2} ({1:3} points): {2}\n'.format(rank_str, str(score), tracks[entry]['display_str'])
             #track_match = re.match('spotify:track:([a-z,A-Z,0-9]*)', entry)
             #votes_list.append(track_match.group(1))
@@ -236,9 +247,10 @@ def printResults(results, tracks, week, freshcuts, playlists, spots=10, rank=25)
 
 #    freshcuts_playlist = '<iframe src="https://embed.spotify.com/?uri=' + freshcuts + '" width="480" height="540" frameborder="0" allowtransparency="true"></iframe>'
     freshcuts_playlist = playlist_embed('fresh_cuts', 'Fresh_cuts', playlist_uri=freshcuts)
-    combined_playlist = playlist_embed('combined_list', 'Curators Picks: {0}'.format(week.strftime("%B %d, %Y")), track_list=votes_list, display=True) #'<iframe src="https://embed.spotify.com/?uri=spotify:trackset:Combined Scoring List:{0}" width="480" height="540" frameborder="0" allowtransparency="true"></iframe>'.format(', '.join(votes_list))
+    combined_playlist = playlist_embed('combined_list', 'Curators Picks: {0}'.format(week.strftime("%B %d, %Y")), track_list=votes_list, display=True, curator_refresh=True) #'<iframe src="https://embed.spotify.com/?uri=spotify:trackset:Combined Scoring List:{0}" width="480" height="540" frameborder="0" allowtransparency="true"></iframe>'.format(', '.join(votes_list))
     playlists.insert(0, ['combined_list', 'Combined', combined_playlist])
     playlists.insert(0, ['fresh_cuts', 'Fresh Cuts', freshcuts_playlist])
+    append_sotds(sotd_list)
 
     print '<div class="preamble">' \
           '{0}' \
@@ -276,9 +288,9 @@ if __name__ == "__main__":
     bonus = 49
     tracks = {}
     playlists = []
-    fresh_cuts_uri = 'spotify:user:audiobonsai:playlist:66ercFkZcIplzE7lLpyA35'
-    for playlist, week in zip([settings.JESSE_TOP_TEN, settings.MOKSHA_TOP_TEN],#, settings.JESSE_TOP_TEN_2, settings.MOKSHA_TOP_TEN_2],
-                              [datetime.datetime.strptime("11/06/2015", "%m/%d/%Y"), datetime.datetime.strptime("11/06/2015", "%m/%d/%Y")]): #,
+    fresh_cuts_uri = 'spotify:user:audiobonsai:playlist:5tPUfLgzfhJwFhuANwUPpm'
+    for playlist, week in zip([settings.JESSE_TOP_TEN_2, settings.MOKSHA_TOP_TEN_2],#, settings.JESSE_TOP_TEN_2, settings.MOKSHA_TOP_TEN_2],
+                              [datetime.datetime.strptime("11/13/2015", "%m/%d/%Y"), datetime.datetime.strptime("11/13/2015", "%m/%d/%Y")]): #,
                                #datetime.datetime.strptime("10/16/2015", "%m/%d/%Y"), datetime.datetime.strptime("10/02/2015", "%m/%d/%Y")]):
     #for playlist, week in zip([settings.JESSE_TOP_TEN, settings.MOKSHA_TOP_TEN, settings.HEIDI_TOP_TEN, settings.MEG_TOP_TEN],
     #                          [datetime.datetime.strptime("08/07/2015", "%m/%d/%Y"), datetime.datetime.strptime("08/07/2015", "%m/%d/%Y"),
