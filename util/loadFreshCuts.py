@@ -25,7 +25,7 @@ parser.add_argument('-pubdate', action='store', dest='pubdate', help='The date o
 parser.add_argument('-rdiourl', action='store', dest='rdiourl', help='The playlist URL for Rdio (not implemented yet)')
 parser.add_argument('-spotifyuri', action='store', dest='spotifyuri', help='The playlist URI from Spotify')
 
-def getSpotifyConn(username='AudioBonsai', scope='user-library-read'):
+def getSpotifyConn(username='AudioBonsai', scope='user-read-private playlist-modify-private playlist-read-private playlist-modify-public'):
     '''
     getSpotifyConn -- connect to spotify
     '''
