@@ -288,13 +288,10 @@ if __name__ == "__main__":
     bonus = 49
     tracks = {}
     playlists = []
-    fresh_cuts_uri = 'spotify:user:audiobonsai:playlist:5tPUfLgzfhJwFhuANwUPpm'
+    fresh_cuts_uri = 'spotify:user:audiobonsai:playlist:2F72NWD5NaWELklBeS1cnp'
     for playlist, week in zip([settings.JESSE_TOP_TEN, settings.MOKSHA_TOP_TEN_3],#, settings.JESSE_TOP_TEN_2, settings.MOKSHA_TOP_TEN_2],
-                              [datetime.datetime.strptime("11/20/2015", "%m/%d/%Y"), datetime.datetime.strptime("11/20/2015", "%m/%d/%Y")]): #,
+                              [datetime.datetime.strptime("12/11/2015", "%m/%d/%Y"), datetime.datetime.strptime("12/11/2015", "%m/%d/%Y")]): #,
                                #datetime.datetime.strptime("10/16/2015", "%m/%d/%Y"), datetime.datetime.strptime("10/02/2015", "%m/%d/%Y")]):
-    #for playlist, week in zip([settings.JESSE_TOP_TEN, settings.MOKSHA_TOP_TEN, settings.HEIDI_TOP_TEN, settings.MEG_TOP_TEN],
-    #                          [datetime.datetime.strptime("08/07/2015", "%m/%d/%Y"), datetime.datetime.strptime("08/07/2015", "%m/%d/%Y"),
-    #                           datetime.datetime.strptime("08/07/2015", "%m/%d/%Y"), datetime.datetime.strptime("08/07/2015", "%m/%d/%Y")]):
         print "{}: {}".format(week.strftime("%A, %m/%d/%Y"), playlist)
         playlists.append(parseList(playlist, spots, tracks, week))
 

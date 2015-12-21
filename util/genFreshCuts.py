@@ -35,30 +35,13 @@ def buildArtistDict(album_tracks):
     track_dict = {}
     return_dict = {}
     duration_list = []
-    #Get full track details including popularity
-    #uris = [x[u'uri'] for x in album_tracks]
-    #track_dets = sp.tracks(uris)
-    #print('Track details list below:')
-    #print(track_dets)
 
     # Identify all the artists on the album to look for singles and dictify the tracks
-    #for album_track in track_dets[u'tracks']:
     for album_track in album_tracks:
-        #print('track_dets:')
-        #print(album_track)
-        #popularity = int(album_track[u'popularity'])
         duration = int(album_track[u'duration_ms'])
         disc_number = int(album_track[u'disc_number'])
         track_number = int(album_track[u'track_number'])
 
-        #if duration <= 60000:
-        #    continue
-        #if popularity not in track_dict.keys():
-        #    track_dict[popularity] = {}
-        #if duration not in track_dict[popularity].keys():
-        #    track_dict[popularity][duration] = {}
-
-        #track_dict[popularity][duration][album_track[u'name']] = album_track[u'uri']
         return_dict[album_track[u'name']] = {}
         return_dict[album_track[u'name']]['uri'] = album_track[u'uri']
         return_dict[album_track[u'name']]['disc_number'] = disc_number
@@ -80,15 +63,6 @@ def buildArtistDict(album_tracks):
                 artist_dict[artist[u'uri']]['popularity'] = '-'
                 if artist_full[u'popularity'] != '-':
                     artist_dict[artist[u'uri']]['popularity'] = int(artist_full[u'popularity'])
-    #sorted_pops = sorted(track_dict.keys(), reverse=True)
-    #if sorted_pops == None or len(sorted_pops) <= 0:
-    #    return [None, None, None, None, None, None]
-    #top_pop = sorted_pops[0]
-    #durations = sorted(track_dict[top_pop].keys())
-    #duration = durations[len(durations)/2]
-    #song_names = track_dict[top_pop][duration].keys()
-    #song_name = random.sample(song_names, 1)
-    #selected_track = track_dict[top_pop][duration][song_name[0]]
     durations = sorted(track_dict.keys())
     if len(durations) == 0:
         return [None, None, None, None, None, None]
@@ -116,18 +90,14 @@ def buildSinglesList(track_dict, artist_dict, max_tracks, sp, album_uri, single_
         if artist_dict[artist_uri]['tracks'] < max_tracks:
             continue
 
-        #print('{0} - {1}'.format(artist_uri, artist_tracks_count))
         artist_tracks = sp.artist_albums(artist_uri, album_type='single', country='US')
         uris = [x[u'uri'] for x in artist_tracks[u'items']]
         if len(uris) == 0:
             return [selected_single, selected_single_disc_number, selected_single_track_number, selected_single_track_name]
         singles_dets = sp.albums(uris)
-        #print(singles_dets)
         for artist_single in singles_dets[u'albums']:
             if artist_single[u'uri'] == album_uri:
                 continue
-            #print('single_dets:')
-            #print(artist_single)
             song_names = [x[u'name'] for x in artist_single[u'tracks'][u'items']]
             match_name = ''
             if artist_single[u'name'] in track_dict.keys():
@@ -141,8 +111,6 @@ def buildSinglesList(track_dict, artist_dict, max_tracks, sp, album_uri, single_
                 single_release_date = datetime.datetime.strptime(artist_single[u'release_date'], '%Y-%m-%d')
             except:
                 print('Bad date format: ' + album_dets[u'release_date'])
-            #if int(artist_single[u'popularity']) >= top_pop and single_release_date > release_date:
-            #print('{0} - {1} compared to {2}'.format(match_name, single_release_date, release_date))
             if single_release_date > release_date:
                 selected_single = track_dict[match_name]['uri']
                 selected_single_disc_number = track_dict[match_name]['disc_number']
@@ -197,8 +165,6 @@ def getAlbumsFromNewReleases(sp):
         results = sp.new_releases(country='US', limit=limit, offset=offset)
         if results == None:
             break
-        #print(results)
-        # Set the maximum number of releases possible
         rescount = results[u'albums'][u'total']
         uris += [x[u'uri'] for x in results[u'albums'][u'items']]
         offset = len(uris)
@@ -210,27 +176,16 @@ def getAlbumsFromSortingHat():
     html = response.read()
     track_dict = {}
     artist_ranks = {}
-    #print(len(html))
-    #track_list = []
     track_items = html.split('</div><div class=')
     print(len(track_items))
-    #print(len(track_items))
-    #group_string = re.compile(' title="artist rank: ([0-9,-]+)"><a onclick=.* href="(spotify:album:.*)">.*</i></a> <span class=trackcount>([0-9]+)</span>')
     match_string = re.compile(' title="artist rank:.*')
-    #group_string = re.compile('.*href="(spotify:album:.*)">.*')
     group_string = re.compile(' title="artist rank: ([0-9,-]+)"><a onclick=".*" href="(spotify:album:.*)"><span class=.*>.*</span> <span class=.*><i>.*</i></span></a> <span class="play trackcount" albumid=spotify:album:.* nolink=true onclick=".*">([0-9]+)</span>')
 
     for track in track_items:
         for match in match_string.findall(track):
-            print(match)
             bits = group_string.match(match)
-            #print(bits)
             if bits == None:
                 continue
-            print(bits.groups())
-            #if int(bits.group(2)) > 2:
-            #if bits.group(1) not in track_list:
-            #    track_list.append(bits.group(1))
             if int(bits.group(3)) > 2:
                 track_dict[bits.group(2)] = bits.group(1)
                 if bits.group(1) == '-':
@@ -242,14 +197,11 @@ def getAlbumsFromSortingHat():
                     artist_ranks[int(bits.group(1))/1000] += 1
                 else:
                     artist_ranks[int(bits.group(1))/1000] = 1
-                #print('uri: {0}, tracks: {1}, artist rank: {2}'.format(bits.group(2), bits.group(3), bits.group(1)))
 
     print(len(track_dict.keys()))
     for rank in sorted(artist_ranks.keys()):
         print('{0} : {1}'.format(rank*1000, artist_ranks[rank]))
     return track_dict.keys()
-    #print(len(track_list))
-    #return track_list
 
 def genPlaylist(sp, fc_tracks, singles_playlist_uri=None, selected_playlist_uri=None):
     singles_in = open('c:\\Users\\Jesse\\singles.txt', mode='r')
@@ -361,7 +313,7 @@ if __name__ == "__main__":
     print args
     sp = getSpotifyConn()
 
-    fc_date = datetime.datetime.strptime('2015-12-04', '%Y-%m-%d')
+    fc_date = datetime.datetime.strptime('2015-12-11', '%Y-%m-%d')
     single_cutoff = fc_date - datetime.timedelta(days=120)
     print('FC Date: {0} - Singles Cutoff: {1}'.format(fc_date.strftime('%Y-%m-%d'), single_cutoff.strftime('%Y-%m-%d')))
 
