@@ -18,7 +18,7 @@ from django.conf import settings
 
 '''
 getSetList --
-   Read and score the curators' voting lists, write to PodListen, create a Google Doc and share it
+   Score the votes
 '''
 
 def getSpotifyConn(username='AudioBonsai', scope='user-read-private playlist-modify-private playlist-read-private playlist-modify-public'):
