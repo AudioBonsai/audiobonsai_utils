@@ -1,17 +1,11 @@
 import sys
 import datetime
 import os
-import django
 import re
 import spotipy
 import spotipy.util as sputil
 import math
-import argparse
-from operator import attrgetter
-from pprint import pprint
 import unicodedata
-import json
-
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "audiobonsai.settings")
 from django.conf import settings
 
@@ -21,21 +15,23 @@ getSetList --
    Score the votes
 '''
 
-def getSpotifyConn(username='AudioBonsai', scope='user-read-private playlist-modify-private playlist-read-private playlist-modify-public'):
+
+def get_spotify_conn(username='AudioBonsai',
+                     scope='user-read-private playlist-modify-private playlist-read-private playlist-modify-public'):
     '''
-    getSpotifyConn -- connect to spotify
+    get_spotify_conn -- connect to spotify
     '''
-    spotify = spotipy.Spotify()
     token = sputil.prompt_for_user_token(username, scope)
-    sp = spotipy.Spotify(auth=token)
-    return sp
+    return spotipy.Spotify(auth=token)
 
 
-def parseList(playlist, spots=10, tracks={}, week="MM/DD/YYYY", username='AudioBonsai', scope='user-read-private playlist-modify-private playlist-read-private playlist-modify-public'):
+def parseList(playlist, spots=10, tracks={}, week="MM/DD/YYYY", username='AudioBonsai',
+              scope='user-read-private playlist-modify-private playlist-read-private playlist-modify-public',
+              debug=False):
     '''
     parseList -- read the provided list and score the tracks based on position
     '''
-    sp = getSpotifyConn(username, scope)
+    sp = get_spotify_conn(username, scope)
     bits = re.match('spotify:user:([a-z,A-Z,0-9]*):playlist:([a-z,A-Z,0-9]*)', playlist)
     print bits.group(1)
     user_info = sp.user(bits.group(1))
@@ -50,6 +46,8 @@ def parseList(playlist, spots=10, tracks={}, week="MM/DD/YYYY", username='AudioB
         username = 'Podrigo'
     elif re.match(username, 'Heidi Wheelock'):
         username = 'Heidi'
+    elif re.match(username, 'Adam Gillespie'):
+        username = 'Adam'
     else:
         username = 'Jesse'
     #pprint(user_info)
@@ -78,20 +76,24 @@ def parseList(playlist, spots=10, tracks={}, week="MM/DD/YYYY", username='AudioB
         tracks[uri]['album'] = track[u'track'][u'album'][u'name']
         tracks[uri]['title'] = track[u'track'][u'name']
         tracks[uri][username] = rank
-        tracks[uri]['score'] += math.pow((spots-rank+1), 2)
+        if rank <= spots:
+            tracks[uri]['score'] += math.pow((spots-rank+1), 2)
         tracks[uri]['week'] = week
         rank += 1
-        if rank > spots:
-            break
+        #if rank > spots:
+            #break
     #return [username, '<iframe src="https://embed.spotify.com/?uri=spotify:trackset:Top Ten by {0}:{1}" width="480" height="540" frameborder="0" allowtransparency="true"></iframe>'.format(username, ', '.join(votes_list))]
-    return [username, username, playlist_embed(username, 'Top Ten by {0}: {1}'.format(username, week.strftime("%B %d, %Y")), track_list=votes_list)]
+    if not debug:
+        return [username, username, playlist_embed(username, 'Top Ten by {0}: {1}'.format(username, week.strftime("%B %d, %Y")), track_list=votes_list)]
+    else:
+        return [username, username, '']
 
 def playlist_embed(id, name, track_list=None, playlist_uri=None, display=False, curator_refresh=False):
     display_str = ' '
     if not display:
         display_str = 'style="display:none"'
     if track_list is not None:
-        sp = getSpotifyConn()
+        sp = get_spotify_conn()
         print(sp._auth_headers())
         print(sp.current_user()[u'id'] + ': ' + name)
         playlist = sp.user_playlist_create(sp.current_user()[u'id'], name)
@@ -103,10 +105,10 @@ def playlist_embed(id, name, track_list=None, playlist_uri=None, display=False, 
         if curator_refresh:
             sp.user_playlist_replace_tracks(sp.current_user()[u'id'], settings.CURATOR_REFRESH, track_list)
         #return '<div id="{2}" {3}><iframe src="https://embed.spotify.com/?uri=spotify:trackset:{0}:{1}" {2} width="480" height="540" frameborder="0" allowtransparency="true"></iframe></div>'.format(name, ', '.join(track_list), id, display_str)
-    return '<div id="{0}" {1}><iframe src="https://embed.spotify.com/?uri={2}" width="480" height="540" frameborder="0" allowtransparency="true"></iframe></div>'.format(id, display_str, playlist_uri)
+    return '<div id="{0}" {1}><iframe src="https://embed.spotify.com/?uri={2}" width="600" height="640" frameborder="0" allowtransparency="true"></iframe></div>'.format(id, display_str, playlist_uri)
 
 def append_sotds(track_list):
-    sp = getSpotifyConn()
+    sp = get_spotify_conn()
     sp.user_playlist_add_tracks(sp.current_user()[u'id'], settings.SOTD, track_list)
     sp.user_playlist_add_tracks(sp.current_user()[u'id'], settings.SOTD_YEARLY, track_list)
 
@@ -115,7 +117,7 @@ def gen_buttons(playlist_ids, playlist_names):
     playlist_dict = dict(zip(playlist_ids, playlist_names))
     for playlist_id in playlist_ids:
         buttons.append('<input value="{0}" type="button" id="{1}_btn" alt="{0}" onclick="ab_switcheroo(\'{1}\', [\'{2}\'])" style="width:120px;"/>'.format(playlist_dict[playlist_id], playlist_id, '\', \''.join(playlist_ids)))
-    return ''.join(['<div name="buttons" style="width:480px;align:center;float:center">', ''.join(buttons), '</div>'])
+    return ''.join(['<div name="buttons" style="width:100%;align:center">', ''.join(buttons), '</div>'])
 
 def create_playlist_switcher(playlists):
     playlist_ids = []
@@ -126,9 +128,9 @@ def create_playlist_switcher(playlists):
         playlist_names.append(playlist[1])
         playlist_divs.append(playlist[2])
     button_text = gen_buttons(playlist_ids, playlist_names)
-    return ''.join(['<div style="float:right;padding-left:15px;align:center">', ''.join(playlist_divs), button_text, '</div>'])
+    return ''.join(['<div align="center" style="width:100%">', ''.join(playlist_divs), button_text, '</div>'])
 
-def scoreVotes(tracks, bonus=49, sotds=[4, 0, 3, 1, 5, 2, 6]):
+def scoreVotes(tracks, bonus=49, sotds=[4, 0, 3, 1, 5, 2, 6], spots=10):
     '''
     scoreVotes -- combine the scores from the individual lists including adding the two-vote bonus
     '''
@@ -145,23 +147,25 @@ def scoreVotes(tracks, bonus=49, sotds=[4, 0, 3, 1, 5, 2, 6]):
                                u'<div class="fresh_cuts">{3}</div>\n']).format(tracks[uri]['artists'], tracks[uri]['title'], tracks[uri]['album'], week_str)
 
         vote_count = 0
-        vote_rank = 25
+        vote_rank = 30
         vote_string = 'Honorable Mention'
-        for key in tracks[uri]:   
+        for key in tracks[uri]:
+            vote_pos = tracks[uri][key]
             if key not in ['artists', 'album', 'title', 'score', 'week']:
                 if tracks[uri][key] < vote_rank:
                     vote_string = key
                     vote_rank = tracks[uri][key]
                 #display_str += u'\t{0}\'s #{1}\n'.format(key, unicode(tracks[uri][key]))
                 display_str += ''.join(u'<div class="vote">{0}\'s #{1}</div>\n').format(key, unicode(tracks[uri][key]))
-                vote_count += 1
+                if vote_pos <= spots:
+                    vote_count += 1
         #display_str = u'{0} {1}'.format(vote_string, display_str)
         tracks[uri]['display_str'] = display_str
 
         if vote_count == 2:
-            score += 49
-        elif vote_count == 3:
             score += 25
+        elif vote_count == 3:
+            score += 49
         elif vote_count == 4:
             score += 49
         if score not in results.keys():
@@ -191,7 +195,7 @@ def scoreVotes(tracks, bonus=49, sotds=[4, 0, 3, 1, 5, 2, 6]):
                     
     return results
  
-def printResults(results, tracks, week, freshcuts, playlists, spots=10, rank=25):
+def printResults(results, tracks, week, freshcuts, playlists, spots=10, rank=25, debug=False):
     '''
     printResults -- write out the results as a playlist and document
     '''
@@ -246,31 +250,38 @@ def printResults(results, tracks, week, freshcuts, playlists, spots=10, rank=25)
         rank = new_rank
 
 #    freshcuts_playlist = '<iframe src="https://embed.spotify.com/?uri=' + freshcuts + '" width="480" height="540" frameborder="0" allowtransparency="true"></iframe>'
-    freshcuts_playlist = playlist_embed('fresh_cuts', 'Fresh_cuts', playlist_uri=freshcuts)
-    combined_playlist = playlist_embed('combined_list', 'Curators Picks: {0}'.format(week.strftime("%B %d, %Y")), track_list=votes_list, display=True, curator_refresh=True) #'<iframe src="https://embed.spotify.com/?uri=spotify:trackset:Combined Scoring List:{0}" width="480" height="540" frameborder="0" allowtransparency="true"></iframe>'.format(', '.join(votes_list))
-    playlists.insert(0, ['combined_list', 'Combined', combined_playlist])
-    playlists.insert(0, ['fresh_cuts', 'Fresh Cuts', freshcuts_playlist])
-    append_sotds(sotd_list)
+    if not debug:
+        freshcuts_playlist = playlist_embed('fresh_cuts', 'Fresh_cuts', playlist_uri=freshcuts)
+        combined_playlist = playlist_embed('combined_list', 'Curators Picks: {0}'.format(week.strftime("%B %d, %Y")), track_list=votes_list, display=True, curator_refresh=True) #'<iframe src="https://embed.spotify.com/?uri=spotify:trackset:Combined Scoring List:{0}" width="480" height="540" frameborder="0" allowtransparency="true"></iframe>'.format(', '.join(votes_list))
+        playlists.insert(0, ['combined_list', 'Combined', combined_playlist])
+        playlists.insert(0, ['fresh_cuts', 'Fresh Cuts', freshcuts_playlist])
+        append_sotds(sotd_list)
 
     print '<div class="preamble">' \
           '{0}' \
-          '<p style="padding-right: 50px;">Every week the curators of AudioBonsai.com create a playlist called the ' \
-          'Fresh Cuts with sample tracks from 60+ EPs and LPs released on Spotify and Rdio that week. However, if you ' \
-          'don\'t feel up to the challenge of such a large amount of new music we compile our individual top ten lists. ' \
-          'These are scored and the results below. The Songs of the Day are our top seven in the combined scoring and ' \
-          'also get included in our <a href="https://open.spotify.com/user/audiobonsai/playlist/5w8fgbOIgwzNwG9pQ1csd4">' \
-          'Songs of the Day</a> playlist on Spotify. Honorable Mentions are songs that also get votes, but don\'t quite ' \
-          'make the songs of the day.</p>' \
-          '<p style="padding-right: 50px;">The Fresh Cuts, Combined list, Moksha\'s votes and Jesse\'s votes are embedded ' \
-          'here. The default list is the combined list, but clicking on the buttons will show you the other lists as ' \
-          'well. Heck you can even copy them to your Spotify account and taunt your friends with your impeccable new ' \
-          'music playlists! Enjoy!</p>' \
-          '</div>'.format(create_playlist_switcher(playlists))
+          '<br/><br/><p>Click on the buttons above to review how each of the curators voted or to check out the Fresh ' \
+          'Cuts list to pick your own favorites. The top seven in the combined scoring and also get included in our ' \
+          '<a href="https://open.spotify.com/user/audiobonsai/playlist/5w8fgbOIgwzNwG9pQ1csd4">Songs of the Day</a> ' \
+          'playlist on Spotify. Honorable Mentions are songs that also get votes, but don\'t quite make the songs of ' \
+          'the day.</p> <p>If you would like to keep up to date on our weekly recommendations without having to look ' \
+          'for each week\'s new playlists, we have a couple for you to subscribe to.  The ' \
+          '<a href="https://open.spotify.com/user/audiobonsai/playlist/1FPe3BebdleEhyjPVmDgbr">Curator Picks: ReFresh</a> ' \
+          'playlist will be reloaded with our selections as soon as we finish voting.  If you\'re too impatient for ' \
+          'that, or just like to explore on your own, the ' \
+          '<a href="https://open.spotify.com/user/audiobonsai/playlist/5CmD30dzQjCujR4CAnL8qc">Fresh Cuts: ReFresh</a> ' \
+          'list is the one for you. The Fresh Cuts list is our selection of 60+ tracks from new EPs and LPs on Spotify ' \
+          'that we review to pick our favorites.  You can also keep track of the songs of the day for the whole year ' \
+          '<a href="https://play.spotify.com/user/audiobonsai/playlist/2JF86ROBAGpK19mTP434SU">here</a>, or revisit ' \
+          'our picks from <a href="https://play.spotify.com/user/audiobonsai/playlist/5U6n1BLf9ZZuoDmOwRKjWR">2015</a> ' \
+          'and <a href="https://play.spotify.com/user/audiobonsai/playlist/63Hep2Vu6Vr6TtF7ZeeMZu">2014</a>.</p>' \
+          '</div>' \
+          '' \
+          ''.format(create_playlist_switcher(playlists))
     print('\n'.join(display_list))
     #print "outro)\n\nThanks for listening.  All of the songs we played samples of in this podcast will be embedded in their full glory on this episode's post.  The top seven will be featured as our Songs of the Day for the week.    If you would like to play along, subscribe to the Fresh Cuts: ReFresh list on Spotify and Rdio.  Let us know your favorite before we record Thursday evening via Twitter, Facebook or our website at AudioBonsai.com or leave us a voice mail telling us who you are and what your favorite is at 952-22-AUDIO.  That's 952-222-8346. If you have your pick to us by Thursday night when we record we can work it into the show.  Get it in by Sunday and we can probably duct tape it in awkwardly somewhere.  Monday or later, we can have a nice chat while you listen to what could have been. We hope you found something to love in this episode and we'll see you again next week. "
 
 def genTagList(playlist_uri):
-    sp = getSpotifyConn()
+    sp = get_spotify_conn()
     bits = re.match('spotify:user:([a-z,A-Z,0-9]*):playlist:([a-z,A-Z,0-9]*)', playlist_uri)
     playlist = sp.user_playlist(user=bits.group(1), playlist_id=bits.group(2))
     artists = []
@@ -286,17 +297,20 @@ if __name__ == "__main__":
     
     spots = 10
     bonus = 49
+    debug = False
     tracks = {}
     playlists = []
-    fresh_cuts_uri = 'spotify:user:audiobonsai:playlist:2F72NWD5NaWELklBeS1cnp'
-    for playlist, week in zip([settings.JESSE_TOP_TEN, settings.MOKSHA_TOP_TEN_3],#, settings.JESSE_TOP_TEN_2, settings.MOKSHA_TOP_TEN_2],
-                              [datetime.datetime.strptime("12/11/2015", "%m/%d/%Y"), datetime.datetime.strptime("12/11/2015", "%m/%d/%Y")]): #,
+    fresh_cuts_uri = 'spotify:user:audiobonsai:playlist:3NAFDkCIj5JwpfcIhuewTf'
+    fc_date = datetime.datetime.strptime("01/15/2015", "%m/%d/%Y")
+    for playlist, week in zip([settings.JESSE_TOP_TEN, settings.MOKSHA_TOP_TEN, settings.ADAM_TOP_TEN],#, settings.JESSE_TOP_TEN_2, settings.MOKSHA_TOP_TEN_2],
+                              [fc_date, fc_date, fc_date]): #,
                                #datetime.datetime.strptime("10/16/2015", "%m/%d/%Y"), datetime.datetime.strptime("10/02/2015", "%m/%d/%Y")]):
         print "{}: {}".format(week.strftime("%A, %m/%d/%Y"), playlist)
-        playlists.append(parseList(playlist, spots, tracks, week))
+        playlists.append(parseList(playlist, spots, tracks, week, debug=debug))
 
-    results = scoreVotes(tracks, bonus)
+    results = scoreVotes(tracks, bonus, spots=spots)
 
     rank = len(tracks)
-    printResults(results, tracks, week, fresh_cuts_uri, playlists, 7, 1)
-    print(genTagList(fresh_cuts_uri))
+    printResults(results, tracks, week, fresh_cuts_uri, playlists, 7, 1, debug)
+    if not debug:
+        print(genTagList(fresh_cuts_uri))

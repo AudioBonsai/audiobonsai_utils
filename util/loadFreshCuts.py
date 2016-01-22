@@ -27,7 +27,7 @@ parser.add_argument('-spotifyuri', action='store', dest='spotifyuri', help='The 
 
 def getSpotifyConn(username='AudioBonsai', scope='user-read-private playlist-modify-private playlist-read-private playlist-modify-public'):
     '''
-    getSpotifyConn -- connect to spotify
+    get_spotify_conn -- connect to spotify
     '''
     token = sputil.prompt_for_user_token(username, scope)
     sp = spotipy.Spotify(auth=token)
