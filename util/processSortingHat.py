@@ -1,32 +1,26 @@
 import argparse
-import collections
 import datetime
 import django
 import os
-import random
 import re
 import spotipy
 import spotipy.util as sputil
 import traceback
 import urllib
 
-#from ipyparallel import Client
 
 __author__ = 'Jesse'
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "audiobonsai.settings")
 django.setup()
-from django.conf import settings
 
 parser = argparse.ArgumentParser(description='load a Fresh Cuts playlist')
 parser.add_argument('-pubdate', action='store', dest='pubdate', help='The date of the FreshCuts list publication')
 
 stats_dict = {}
 
-#rc = Client()
-#lview = rc.load_balanced_view()
 
-class Album_Candidate:
+class AlbumCandidate:
     spotifyUri = ''
     sortingHatRank = ''
     releaseDate = datetime.datetime.strptime('1970-1-1', '%Y-%m-%d')
@@ -39,9 +33,9 @@ class Album_Candidate:
     chosenSingle = None
     chosenGuess = None
 
-    def __init__(self, spotifyUri, sortingHatRank=None):
-        self.spotifyUri = spotifyUri.__str__()
-        self.sortingHatRank = sortingHatRank
+    def __init__(self, spotify_uri, sorting_hat_rank=None):
+        self.spotifyUri = spotify_uri.__str__()
+        self.sortingHatRank = sorting_hat_rank
         self.artistDict = {}
         self.trackDict = {}
         self.albumArtists = []
@@ -52,77 +46,76 @@ class Album_Candidate:
         self.artistPop = 0
         self.albumTracks = 0
 
-
-    def setReleaseDate(self, dateText):
+    def set_release_date(self, date_text):
         try:
-            self.releaseDate = datetime.datetime.strptime(dateText, '%Y-%m-%d')
+            self.releaseDate = datetime.datetime.strptime(date_text, '%Y-%m-%d')
         except:
-            print('Bad date format: ' + dateText)
+            print('Bad date format: ' + date_text)
 
-    def addTrack(self, trackCandidate):
-        if trackCandidate.discNumber not in self.trackDict.keys():
-            self.trackDict[trackCandidate.discNumber] = {}
-        self.trackDict[trackCandidate.discNumber][trackCandidate.trackNumber] = trackCandidate
+    def add_track(self, track_candidate):
+        if track_candidate.discNumber not in self.trackDict.keys():
+            self.trackDict[track_candidate.discNumber] = {}
+        self.trackDict[track_candidate.discNumber][track_candidate.trackNumber] = track_candidate
         self.albumTracks += 1
 
-        for artist in trackCandidate.artistList:
-            if artist.spotifyUri not in self.artistDict.keys():
-                self.artistDict[artist.spotifyUri] = artist
+        for track_artist in track_candidate.artistList:
+            if track_artist.spotifyUri not in self.artistDict.keys():
+                self.artistDict[track_artist.spotifyUri] = track_artist
 
-    def selectArtists(self):
-        for uri, artist in self.artistDict.items():
-            if self.albumTracks == artist.getNumAlbumTracks(self):
-                self.albumArtists.append(artist)
-                if artist.popularity > self.artistPop:
-                    self.artistPop = artist.popularity
+    def select_artists(self):
+        for uri, album_artist in self.artistDict.items():
+            if self.albumTracks == album_artist.get_num_album_tracks(self):
+                self.albumArtists.append(album_artist)
+                if album_artist.popularity > self.artistPop:
+                    self.artistPop = album_artist.popularity
 
-    def getSongDict(self):
-        songDict = {}
+    def get_song_dict(self):
+        song_dict = {}
         for disc in self.trackDict.keys():
             for trackNum in self.trackDict[disc].keys():
-                songDict[self.trackDict[disc][trackNum].name] = self.trackDict[disc][trackNum]
-        return songDict
+                song_dict[self.trackDict[disc][trackNum].name] = self.trackDict[disc][trackNum]
+        return song_dict
 
-    def pickSingle(self, sp, singlesCutoff):
-        for artist in self.albumArtists:
+    def pick_single(self, sp_conn, singles_cutoff):
+        for album_artist in self.albumArtists:
             try:
-                artist_tracks = sp.artist_albums(artist.spotifyUri, album_type='single', country='US')
+                artist_tracks = sp_conn.artist_albums(album_artist.spotifyUri, album_type='single', country='US')
             except:
-                print('Error occurred getting artist tracks for {0}'.format(artist.name))
-                sp = getSpotifyConn()
-                artist_tracks = sp.artist_albums(artist.spotifyUri, album_type='single', country='US')
+                print('Error occurred getting artist tracks for {0}'.format(album_artist.name))
+                sp_conn = get_spotify_conn()
+                artist_tracks = sp_conn.artist_albums(album_artist.spotifyUri, album_type='single', country='US')
             uris = [x[u'uri'] for x in artist_tracks[u'items']]
             if len(uris) == 0:
                 break
-            singles_dets = sp.albums(uris)
-            releaseDate = singlesCutoff
+            singles_dets = sp_conn.albums(uris)
+            release_date = singles_cutoff
 
-            albumNames = self.getSongDict()
+            album_names = self.get_song_dict()
             match_name = None
 
             for artist_single in singles_dets[u'albums']:
-                singlesNames = [x[u'name'] for x in artist_single[u'tracks'][u'items']]
+                singles_names = [x[u'name'] for x in artist_single[u'tracks'][u'items']]
                 if artist_single[u'uri'] == self.spotifyUri:
                     continue
-                if artist_single[u'name'] in albumNames.keys():
+                if artist_single[u'name'] in album_names.keys():
                     match_name = artist_single[u'name']
-                elif singlesNames[0] in albumNames.keys():
-                    match_name = singlesNames[0]
+                elif singles_names[0] in album_names.keys():
+                    match_name = singles_names[0]
                 else:
                     continue
-                singleReleaseDate = datetime.datetime.strptime('1970-1-1', '%Y-%m-%d')
+                single_release_date = datetime.datetime.strptime('1970-1-1', '%Y-%m-%d')
                 try:
-                    singleReleaseDate = datetime.datetime.strptime(artist_single[u'release_date'], '%Y-%m-%d')
+                    single_release_date = datetime.datetime.strptime(artist_single[u'release_date'], '%Y-%m-%d')
                 except:
                     print('Bad date format: ' + artist_single[u'release_date'])
-                if singleReleaseDate > releaseDate:
-                    releaseDate = singleReleaseDate
-                    self.chosenSingle = albumNames[match_name]
+                if single_release_date > release_date:
+                    release_date = single_release_date
+                    self.chosenSingle = album_names[match_name]
                     return
 
-        if self.chosenSingle == None:
+        if self.chosenSingle is None:
             durations = {}
-            for trackNum in range(1,6 if self.albumTracks > 6 else self.albumTracks+1):
+            for trackNum in range(1, 6 if self.albumTracks > 6 else self.albumTracks+1):
                 if trackNum not in self.trackDict[1].keys():
                     break
                 track = self.trackDict[1][trackNum]
@@ -131,36 +124,39 @@ class Album_Candidate:
             self.chosenGuess = durations[duration]
 
 
-class Artist_Candidate:
+class ArtistCandidate:
     spotifyUri = ''
     name = ''
     popularity = ''
-    albumDict = {}
+    albumDict = dict()
+    genres = list()
 
-    def __init__(self, artistDets, album, track):
-        self.name = artistDets[u'name']
-        self.spotifyUri = artistDets[u'uri']
-        if artistDets[u'popularity'] != '-':
-            self.popularity = int(artistDets[u'popularity'])
+    def __init__(self, artist_dets, artist_album, track):
+        self.name = artist_dets[u'name']
+        self.spotifyUri = artist_dets[u'uri']
+        self.genres = artist_dets[u'genres']
+        if artist_dets[u'popularity'] != '-':
+            self.popularity = int(artist_dets[u'popularity'])
         else:
             self.popularity = 0
-        self.albumDict = {}
-        self.albumDict[album.spotifyUri] = {}
-        self.albumDict[album.spotifyUri]['album'] = album
-        self.albumDict[album.spotifyUri]['tracks'] = [track]
+        self.albumDict = dict()
+        self.albumDict[artist_album.spotifyUri] = {}
+        self.albumDict[artist_album.spotifyUri]['album'] = artist_album
+        self.albumDict[artist_album.spotifyUri]['tracks'] = [track]
 
-    def addTrack(self, album, track):
-        if album.spotifyUri not in self.albumDict.keys():
-            self.albumDict[album.spotifyUri] = {}
-            self.albumDict[album.spotifyUri]['album'] = album
-            self.albumDict[album.spotifyUri]['tracks'] = [track]
+    def add_track(self, source_album, track):
+        if source_album.spotifyUri not in self.albumDict.keys():
+            self.albumDict[source_album.spotifyUri] = {}
+            self.albumDict[source_album.spotifyUri]['album'] = source_album
+            self.albumDict[source_album.spotifyUri]['tracks'] = [track]
         else:
-            self.albumDict[album.spotifyUri]['tracks'].append(track)
+            self.albumDict[source_album.spotifyUri]['tracks'].append(track)
 
-    def getNumAlbumTracks(self, album):
-        return len(self.albumDict[album.spotifyUri]['tracks'])
+    def get_num_album_tracks(self, album_dict):
+        return len(self.albumDict[album_dict.spotifyUri]['tracks'])
 
-class Track_Candidate:
+
+class TrackCandidate:
     duration = ''
     discNumber = ''
     trackNumber = ''
@@ -168,64 +164,74 @@ class Track_Candidate:
     spotifyUri = ''
     artistList = []
 
-    def __init__(self, album, albumTrack, artistDict, sp):
-        self.duration = int(albumTrack[u'duration_ms'])
-        self.name = albumTrack[u'name']
-        self.spotifyUri = albumTrack[u'uri']
-        self.discNumber = int(albumTrack[u'disc_number'])
-        self.trackNumber = int(albumTrack[u'track_number'])
+    def __init__(self, source_album, album_track, track_artist_dict, passed_sp):
+        self.duration = int(album_track[u'duration_ms'])
+        self.name = album_track[u'name']
+        self.spotifyUri = album_track[u'uri']
+        self.discNumber = int(album_track[u'disc_number'])
+        self.trackNumber = int(album_track[u'track_number'])
         self.artistList = []
 
-        for artist in albumTrack[u'artists']:
-            if artist[u'uri'] in artistDict.keys():
-                artistDict[artist[u'uri']].addTrack(album, self)
+        for track_artist in album_track[u'artists']:
+            if track_artist[u'uri'] in track_artist_dict.keys():
+                track_artist_dict[track_artist[u'uri']].add_track(source_album, self)
             else:
                 try:
-                    artistFull = sp.artist(artist[u'uri'])
+                    artist_full = passed_sp.artist(track_artist[u'uri'])
                 except:
-                    print('Problem resolving artist {0}'.format(artist[u'uri']))
-                    sp = getSpotifyConn()
-                    artistFull = sp.artist(artist[u'uri'])
-                artist_candidate = Artist_Candidate(artistFull, album, self)
-                artistDict[artist[u'uri']] = artist_candidate
+                    print('Problem resolving artist {0}'.format(track_artist[u'uri']))
+                    passed_sp = get_spotify_conn()
+                    artist_full = passed_sp.artist(track_artist[u'uri'])
+                artist_candidate = ArtistCandidate(artist_full, source_album, self)
+                track_artist_dict[track_artist[u'uri']] = artist_candidate
                 self.artistList.append(artist_candidate)
 
-        album.addTrack(self)
+        source_album.add_track(self)
 
-def getSpotifyConn(username='audiobonsai', scope='user-read-private playlist-modify-private playlist-read-private playlist-modify-public'):
-    '''
+
+def get_spotify_conn(username='audiobonsai',
+                     scope='user-read-private playlist-modify-private playlist-read-private playlist-modify-public'):
+    """
     get_spotify_conn -- connect to spotify
-    '''
+    """
     token = sputil.prompt_for_user_token(username, scope)
-    sp = spotipy.Spotify(auth=token)
-    return sp
+    return_sp = spotipy.Spotify(auth=token)
+    return return_sp
 
-def buildArtistDict(album, album_tracks, artist_dict, ap):
+
+def build_artist_dict(album, album_tracks, artist_dict, ap):
     # Identify all the artists on the album to look for singles and dictify the tracks
     for album_track in album_tracks:
-        Track_Candidate(album, album_track, artist_dict, sp)
+        TrackCandidate(album, album_track, artist_dict, sp)
 
-def processAlbumDets(album, album_dets, sp, album_count, single_cutoff, artist_dict):
+
+def process_album_dets(album_obj, album_dets, sp, album_count, single_cutoff, artist_dict):
     # Get all the tracks on the album
     album_tracks = album_dets[u'tracks'][u'items']
-    album_name = album_dets[u'name']
-    artist_names = []
-    buildArtistDict(album, album_tracks, artist_dict, sp)
-    album.selectArtists()
-    album.pickSingle(sp, single_cutoff)
+    build_artist_dict(album_obj, album_tracks, artist_dict, sp)
+    album_obj.select_artists()
+    album_obj.pick_single(sp, single_cutoff)
 
-    if album.chosenSingle != None:
-        print(u'{6}: {0}: {1} from {2} by {3}({4}), {5}'.format(album_count, album.chosenSingle.name, album.name,
-                                                           ', '.join([artist.name for artist in album.albumArtists]),
-                                                           album.artistPop, 'Single', datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')))
-    elif album.chosenGuess != None:
-        print(u'{6}: {0}: {1} from {2} by {3}({4}), {5}'.format(album_count, album.chosenGuess.name, album.name,
-                                                           ', '.join([artist.name for artist in album.albumArtists]),
-                                                           album.artistPop, 'Guess', datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')))
+    if album_obj.chosenSingle is not None:
+        print(u'{6}: {0}: {1} from {2} by {3}({4}), {5}'.format(album_count, album_obj.chosenSingle.name,
+                                                                album_obj.name,
+                                                                ', '.join(
+                                                                    [artist.name for artist in album_obj.albumArtists]),
+                                                                album_obj.artistPop,
+                                                                'Single',
+                                                                datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')))
+    elif album_obj.chosenGuess is not None:
+        print(u'{6}: {0}: {1} from {2} by {3}({4}), {5}'.format(album_count, album_obj.chosenGuess.name, album_obj.name,
+                                                                ', '.join(
+                                                                    [artist.name for artist in album_obj.albumArtists]),
+                                                                album_obj.artistPop, 'Guess',
+                                                                datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')))
     else:
-        print(u'{2}: No track chosen for {0}, {1}'.format(album.name, album.spotifyUri, datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')))
+        print(u'{2}: No track chosen for {0}, {1}'.format(album_obj.name, album_obj.spotifyUri,
+                                                          datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')))
 
-def getAlbumsFromNewReleases(sp):
+
+def get_albums_from_new_releases(sp):
     uris = []
     rescount = 500
     limit = 50
@@ -237,12 +243,13 @@ def getAlbumsFromNewReleases(sp):
             break
         rescount = results[u'albums'][u'total']
         for x in results[u'albums'][u'items']:
-            uris.append(Album_Candidate(x[u'uri']))
+            uris.append(AlbumCandidate(x[u'uri']))
         offset = len(uris)
 
     return uris
 
-def getAlbumsFromSortingHat():
+
+def get_albums_from_sorting_hat():
     response = urllib.request.urlopen('http://everynoise.com/spotify_new_releases.html')
     html = response.read().decode("utf-8")
     print(type(html))
@@ -261,7 +268,7 @@ def getAlbumsFromSortingHat():
             if bits == None:
                 continue
             if int(bits.group(3)) > 2:
-                track_list.append(Album_Candidate(bits.group(2), bits.group(1)))
+                track_list.append(AlbumCandidate(bits.group(2), bits.group(1)))
                 if bits.group(1) == '-':
                     if '-' in artist_ranks.keys():
                         artist_ranks['-'] += 1
@@ -277,7 +284,8 @@ def getAlbumsFromSortingHat():
     #    print('{0} : {1}'.format(rank*1000, artist_ranks[rank]))
     return track_list
 
-def updatePlaylist(sp, uri, track_list):
+
+def update_playlist(upd_sp, uri, track_list):
     start = 0
     end = 100
     while start <= len(track_list):
@@ -285,28 +293,29 @@ def updatePlaylist(sp, uri, track_list):
             end = len(track_list)
         if start == 0:
             try:
-                sp.user_playlist_replace_tracks(settings.SP_USERNAME, uri, track_list[start:end])
+                upd_sp.user_playlist_replace_tracks(upd_sp.current_user()[u'id'], uri, track_list[start:end])
             except:
-                sp = getSpotifyConn()
-                sp.user_playlist_replace_tracks(settings.SP_USERNAME, uri, track_list[start:end])
-            #sp.user_playlist_replace_tracks(settings.SP_USERNAME, uri, track_list[start:end])
+                upd_sp = get_spotify_conn()
+                upd_sp.user_playlist_replace_tracks(upd_sp.current_user()[u'id'], uri, track_list[start:end])
+            #sp.user_playlist_replace_tracks(sp.current_user()[u'id'], uri, track_list[start:end])
         else:
             try:
-                sp.user_playlist_add_tracks(settings.SP_USERNAME, uri, track_list[start:end])
+                upd_sp.user_playlist_add_tracks(upd_sp.current_user()[u'id'], uri, track_list[start:end])
             except:
-                sp = getSpotifyConn()
-                sp.user_playlist_add_tracks(settings.SP_USERNAME, uri, track_list[start:end])
-            #sp.user_playlist_add_tracks(settings.SP_USERNAME, uri, track_list[start:end])
+                upd_sp = get_spotify_conn()
+                upd_sp.user_playlist_add_tracks(upd_sp.current_user()[u'id'], uri, track_list[start:end])
+            #sp.user_playlist_add_tracks(sp.current_user()[u'id'], uri, track_list[start:end])
         start += 100
         end += 100
 
-def genPlaylist(sp, fc_tracks, singles_playlist_uri=None, selected_playlist_uri=None, jje_playlist_uris=None):
+
+def gen_playlist(sp, fc_tracks, singles_playlist_uri=None, selected_playlist_uri=None, jje_playlist_uris=None):
     if singles_playlist_uri == None:
-        playlist = sp.user_playlist_create(settings.SP_USERNAME, 'Sorting Hat Singles Selection: ' + args.pubdate)
+        playlist = sp.user_playlist_create(sp.current_user()[u'id'], 'Sorting Hat Singles Selection: ' + args.pubdate)
         singles_playlist_uri = playlist[u'uri']
 
     if selected_playlist_uri == None:
-        playlist = sp.user_playlist_create(settings.SP_USERNAME, 'Sorting Hat Best Guess Selection: ' + args.pubdate)
+        playlist = sp.user_playlist_create(sp.current_user()[u'id'], 'Sorting Hat Best Guess Selection: ' + args.pubdate)
         selected_playlist_uri = playlist[u'uri']
 
     for [type, playlist_uri] in list(zip(['singles', 'selected'], [singles_playlist_uri, selected_playlist_uri])):
@@ -328,12 +337,14 @@ def genPlaylist(sp, fc_tracks, singles_playlist_uri=None, selected_playlist_uri=
                 elif popularity == 0:
                     jje_playlist_uris[type]['unknown']['tracks'].append(track.spotifyUri)
 
-        updatePlaylist(sp, playlist_uri, track_list)
-        updatePlaylist(sp, jje_playlist_uris[type]['top50']['uri'], jje_playlist_uris[type]['top50']['tracks'])
-        updatePlaylist(sp, jje_playlist_uris[type]['verge']['uri'], jje_playlist_uris[type]['verge']['tracks'])
-        updatePlaylist(sp, jje_playlist_uris[type]['unheralded']['uri'], jje_playlist_uris[type]['unheralded']['tracks'])
-        updatePlaylist(sp, jje_playlist_uris[type]['underground']['uri'], jje_playlist_uris[type]['underground']['tracks'])
-        updatePlaylist(sp, jje_playlist_uris[type]['unknown']['uri'], jje_playlist_uris[type]['unknown']['tracks'])
+        update_playlist(sp, playlist_uri, track_list)
+        update_playlist(sp, jje_playlist_uris[type]['top50']['uri'], jje_playlist_uris[type]['top50']['tracks'])
+        update_playlist(sp, jje_playlist_uris[type]['verge']['uri'], jje_playlist_uris[type]['verge']['tracks'])
+        update_playlist(sp, jje_playlist_uris[type]['unheralded']['uri'],
+                        jje_playlist_uris[type]['unheralded']['tracks'])
+        update_playlist(sp, jje_playlist_uris[type]['underground']['uri'],
+                        jje_playlist_uris[type]['underground']['tracks'])
+        update_playlist(sp, jje_playlist_uris[type]['unknown']['uri'], jje_playlist_uris[type]['unknown']['tracks'])
 
     '''
     track_list = []
@@ -344,51 +355,37 @@ def genPlaylist(sp, fc_tracks, singles_playlist_uri=None, selected_playlist_uri=
                 continue
             track_list.append(track.spotifyUri)
 
-    updatePlaylist(sp, selected_playlist_uri, track_list)
+    update_playlist(sp, selected_playlist_uri, track_list)
     '''
 
 
-#@lview.parallel()
-def processList(albums):
-    print('Hello')
-    sp = getSpotifyConn()
+def process_list(albums):
+    sp = get_spotify_conn()
     album_count = 0
     for album in albums:
-        try:
-            success = processAlbum(album, sp, album_count)
-        except Exception as e:
-            if re.match('.*non existing id.*', e.__repr__()):
-                print('{0} does not exist, skipping'.format(album))
-                continue
-            else:
-                #print('WTF is this?  ' + e)
-                sp = getSpotifyConn()
-                success = False
-                #continue
+        success = process_album(album, sp, album_count)
         if success:
            album_count += 1
         else:
             albums.append(album)
-            sp = getSpotifyConn()
+            sp = get_spotify_conn()
         if album_count % 100 == 0:
-            sp = getSpotifyConn()
+            sp = get_spotify_conn()
 
 
-def processAlbum(album, sp, album_count):
-    #sp = getSpotifyConn()
+def process_album(album, sp, album_count):
+    #sp = get_spotify_conn()
     try:
         album_dets = sp.album(album.spotifyUri)
     except Exception as e:
         try:
-            print('Exception on ' + album.__str__())
-            album_dets = sp.album(album.spotifyUri)
+            print('Excpetion on ' + album.__str__())
         except Exception as e2:
             print(e2)
-            raise e2
         print(e)
         return False
     if len(album_dets[u'tracks'][u'items']) >= 3:
-        album.setReleaseDate(album_dets[u'release_date'])
+        album.set_release_date(album_dets[u'release_date'])
         if album.releaseDate in release_date_dict.keys():
             release_date_dict[album.releaseDate] += 1
         else:
@@ -397,8 +394,8 @@ def processAlbum(album, sp, album_count):
         if album.releaseDate <= fc_date and album.releaseDate - fc_date > datetime.timedelta(days=-7):
             try:
                 album.name = album_dets[u'name']
-                processAlbumDets(album, album_dets, sp, album_count, single_cutoff, artist_dict)
-                #processAlbumDets(album, album_dets, sp, 0, single_cutoff, artist_dict)
+                process_album_dets(album, album_dets, sp, album_count, single_cutoff, artist_dict)
+                #process_album_dets(album, album_dets, sp, 0, single_cutoff, artist_dict)
             except Exception as e:
                 print(u'Excpetion on {0}, {1}'.format(album.name, album.spotifyUri))
                 print(e)
@@ -410,9 +407,9 @@ if __name__ == "__main__":
     start_time = datetime.datetime.now()
     args = parser.parse_args()
     print(args)
-    sp = getSpotifyConn()
+    sp = get_spotify_conn()
 
-    fc_date = datetime.datetime.strptime('2016-05-20', '%Y-%m-%d')
+    fc_date = datetime.datetime.strptime('2016-05-06', '%Y-%m-%d')
     single_cutoff = fc_date - datetime.timedelta(days=120)
     print('FC Date: {0} - Singles Cutoff: {1}'.format(fc_date.strftime('%Y-%m-%d'), single_cutoff.strftime('%Y-%m-%d')))
 
@@ -427,15 +424,14 @@ if __name__ == "__main__":
     artist_dict = {}
     # Get all new releases
     #results = get_albums_from_new_releases(sp)
-    results = getAlbumsFromSortingHat()
-
-    processList(results)
+    results = get_albums_from_sorting_hat()
+    process_list(results)
     #results_range = []
     #for i in range(0, len(results), int(len(results)/len(rc.ids))):
     #    results_range.append(results[i:i+int(len(results)/len(rc.ids))])
     #    print('{0:d}:{1:d}'.format(i, i+int(len(results)/len(rc.ids))))
 
-    #lview.map(processList, results)
+    #lview.map(process_list, results)
 
     for releaseDate in sorted(release_date_dict):
         print('{0}: {1}'.format(releaseDate, release_date_dict[releaseDate]))
@@ -536,7 +532,7 @@ if __name__ == "__main__":
     print('Removed {0} albums for matching \'Remaster\' in best guess list'.format(remaster_count))
     print('Removed {0} albums for matching \'Reissue\' in best guess list'.format(reissue_count))
     print('Removed {0} compilation albums from best guess list'.format(compilation_count))
-    genPlaylist(sp, fc_tracks, singlesPlaylistURI, selectedPlaylistURI, jje_playlist_uris)
+    gen_playlist(sp, fc_tracks, singlesPlaylistURI, selectedPlaylistURI, jje_playlist_uris)
 
     pops = {}
     for type in sorted(fc_tracks.keys()):
@@ -559,7 +555,5 @@ if __name__ == "__main__":
     hours, remainder = divmod(total_time.seconds.__int__(), 3600)
     minutes, seconds = divmod(remainder, 60)
     print('Execution time: ' + '%s:%s:%s' % (hours, minutes, seconds))
-
-
 
 

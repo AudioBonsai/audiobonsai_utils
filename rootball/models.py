@@ -1,5 +1,6 @@
 from django.db import models
 from django.core.urlresolvers import reverse
+import datetime
 
 class Artist(models.Model):
     name = models.CharField(max_length=255)
@@ -193,3 +194,171 @@ class FreshCuts(models.Model):
         return reverse('freshcuts.views.details', args=[str(self.id)])
 
 
+class AlbumCandidate(models.Model):
+    spotifyUri = models.CharField(max_length=255)
+    sortingHatRank = models.IntegerField()
+    releaseDate = models.DateField()
+    artistDict = {}
+    trackDict = {}
+    mostRecentSingle = None
+    artistPop = 0
+    albumTracks = 0
+    albumArtists = []
+    chosenSingle = None
+    chosenGuess = None
+
+    def __init__(self, spotify_uri, sorting_hat_rank=None):
+        self.releaseDate = datetime.datetime.strptime('1970-1-1', '%Y-%m-%d')
+        self.spotifyUri = spotify_uri.__str__()
+        self.sortingHatRank = sorting_hat_rank
+        self.artistDict = {}
+        self.trackDict = {}
+        self.albumArtists = []
+        self.releaseDate = datetime.datetime.strptime('1970-1-1', '%Y-%m-%d')
+        self.mostRecentSingle = None
+        self.chosenSingle = None
+        self.chosenGuess = None
+        self.artistPop = 0
+        self.albumTracks = 0
+
+    def set_release_date(self, date_text):
+        try:
+            self.releaseDate = datetime.datetime.strptime(date_text, '%Y-%m-%d')
+        except:
+            print('Bad date format: ' + date_text)
+
+    def add_track(self, track_candidate):
+        if track_candidate.discNumber not in self.trackDict.keys():
+            self.trackDict[track_candidate.discNumber] = {}
+        self.trackDict[track_candidate.discNumber][track_candidate.trackNumber] = track_candidate
+        self.albumTracks += 1
+
+        for track_artist in track_candidate.artistList:
+            if track_artist.spotifyUri not in self.artistDict.keys():
+                self.artistDict[track_artist.spotifyUri] = track_artist
+
+    def select_artists(self):
+        for uri, album_artist in self.artistDict.items():
+            if self.albumTracks == album_artist.get_num_album_tracks(self):
+                self.albumArtists.append(album_artist)
+                if album_artist.popularity > self.artistPop:
+                    self.artistPop = album_artist.popularity
+
+    def get_song_dict(self):
+        song_dict = {}
+        for disc in self.trackDict.keys():
+            for trackNum in self.trackDict[disc].keys():
+                song_dict[self.trackDict[disc][trackNum].name] = self.trackDict[disc][trackNum]
+        return song_dict
+
+    def pick_single(self, sp_conn, singles_cutoff):
+        for album_artist in self.albumArtists:
+            try:
+                artist_tracks = sp_conn.artist_albums(album_artist.spotifyUri, album_type='single', country='US')
+            except:
+                print('Error occurred getting artist tracks for {0}'.format(album_artist.name))
+                sp_conn = get_spotify_conn()
+                artist_tracks = sp_conn.artist_albums(album_artist.spotifyUri, album_type='single', country='US')
+            uris = [x[u'uri'] for x in artist_tracks[u'items']]
+            if len(uris) == 0:
+                break
+            singles_dets = sp_conn.albums(uris)
+            release_date = singles_cutoff
+
+            album_names = self.get_song_dict()
+            match_name = None
+
+            for artist_single in singles_dets[u'albums']:
+                singles_names = [x[u'name'] for x in artist_single[u'tracks'][u'items']]
+                if artist_single[u'uri'] == self.spotifyUri:
+                    continue
+                if artist_single[u'name'] in album_names.keys():
+                    match_name = artist_single[u'name']
+                elif singles_names[0] in album_names.keys():
+                    match_name = singles_names[0]
+                else:
+                    continue
+                single_release_date = datetime.datetime.strptime('1970-1-1', '%Y-%m-%d')
+                try:
+                    single_release_date = datetime.datetime.strptime(artist_single[u'release_date'], '%Y-%m-%d')
+                except:
+                    print('Bad date format: ' + artist_single[u'release_date'])
+                if single_release_date > release_date:
+                    release_date = single_release_date
+                    self.chosenSingle = album_names[match_name]
+                    return
+
+        if self.chosenSingle is None:
+            durations = {}
+            for trackNum in range(1, 6 if self.albumTracks > 6 else self.albumTracks+1):
+                if trackNum not in self.trackDict[1].keys():
+                    break
+                track = self.trackDict[1][trackNum]
+                durations[track.duration] = track
+            duration = sorted(durations.keys())[int(len(durations.keys())/2)]
+            self.chosenGuess = durations[duration]
+
+
+class ArtistCandidate(models.Model):
+    spotifyUri = ''
+    name = ''
+    popularity = ''
+    albumDict = dict()
+    genres = list()
+
+    def __init__(self, artist_dets, artist_album, track):
+        self.name = artist_dets[u'name']
+        self.spotifyUri = artist_dets[u'uri']
+        self.genres = artist_dets[u'genres']
+        if artist_dets[u'popularity'] != '-':
+            self.popularity = int(artist_dets[u'popularity'])
+        else:
+            self.popularity = 0
+        self.albumDict = dict()
+        self.albumDict[artist_album.spotifyUri] = {}
+        self.albumDict[artist_album.spotifyUri]['album'] = artist_album
+        self.albumDict[artist_album.spotifyUri]['tracks'] = [track]
+
+    def add_track(self, source_album, track):
+        if source_album.spotifyUri not in self.albumDict.keys():
+            self.albumDict[source_album.spotifyUri] = {}
+            self.albumDict[source_album.spotifyUri]['album'] = source_album
+            self.albumDict[source_album.spotifyUri]['tracks'] = [track]
+        else:
+            self.albumDict[source_album.spotifyUri]['tracks'].append(track)
+
+    def get_num_album_tracks(self, album_dict):
+        return len(self.albumDict[album_dict.spotifyUri]['tracks'])
+
+
+class TrackCandidate(models.Model):
+    duration = ''
+    discNumber = ''
+    trackNumber = ''
+    name = ''
+    spotifyUri = ''
+    artistList = []
+
+    def __init__(self, source_album, album_track, track_artist_dict, passed_sp):
+        self.duration = int(album_track[u'duration_ms'])
+        self.name = album_track[u'name']
+        self.spotifyUri = album_track[u'uri']
+        self.discNumber = int(album_track[u'disc_number'])
+        self.trackNumber = int(album_track[u'track_number'])
+        self.artistList = []
+
+        for track_artist in album_track[u'artists']:
+            if track_artist[u'uri'] in track_artist_dict.keys():
+                track_artist_dict[track_artist[u'uri']].add_track(source_album, self)
+            else:
+                try:
+                    artist_full = passed_sp.artist(track_artist[u'uri'])
+                except:
+                    print('Problem resolving artist {0}'.format(track_artist[u'uri']))
+                    passed_sp = get_spotify_conn()
+                    artist_full = passed_sp.artist(track_artist[u'uri'])
+                artist_candidate = ArtistCandidate(artist_full, source_album, self)
+                track_artist_dict[track_artist[u'uri']] = artist_candidate
+                self.artistList.append(artist_candidate)
+
+        source_album.add_track(self)

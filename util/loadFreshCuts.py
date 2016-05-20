@@ -12,7 +12,6 @@ import os
 import re
 import spotipy
 import spotipy.util as sputil
-from rdioapi import Rdio
 import sys
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "audiobonsai.settings")
@@ -40,12 +39,12 @@ def getRdioConn():
 
 if __name__ == "__main__":
     args = parser.parse_args()
-    print args
+    print(args)
     fc = FreshCuts()
     sp = getSpotifyConn()
     rdio = getRdioConn()
 
-    print sys.argv
+    print(sys.argv)
 
     #bits = re.match('spotify:user:([a-z,A-Z,0-9]*):playlist:([a-z,A-Z,0-9]*)', args.spotifyuri)
     bits = re.match('https://open.spotify.com/user/([a-z,A-Z,0-9]*)/playlist/([a-z,A-Z,0-9]*)', args.spotifyuri)
