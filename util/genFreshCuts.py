@@ -89,7 +89,7 @@ class Album_Candidate:
                 artist_tracks = sp.artist_albums(artist.spotifyUri, album_type='single', country='US')
             except:
                 print('Error occurred getting artist tracks for {0}'.format(artist.name))
-                sp = getSpotifyConn()
+                sp = getSpotifyConn(username=settings.SP_USERNAME)
                 artist_tracks = sp.artist_albums(artist.spotifyUri, album_type='single', country='US')
             uris = [x[u'uri'] for x in artist_tracks[u'items']]
             if len(uris) == 0:
@@ -184,7 +184,7 @@ class Track_Candidate:
                     artistFull = sp.artist(artist[u'uri'])
                 except:
                     print('Problem resolving artist {0}'.format(artist[u'uri']))
-                    sp = getSpotifyConn()
+                    sp = getSpotifyConn(username=settings.SP_USERNAME)
                     artistFull = sp.artist(artist[u'uri'])
                 artist_candidate = Artist_Candidate(artistFull, album, self)
                 artistDict[artist[u'uri']] = artist_candidate
@@ -192,12 +192,13 @@ class Track_Candidate:
 
         album.addTrack(self)
 
-def getSpotifyConn(username='audiobonsai', scope='user-read-private playlist-modify-private playlist-read-private playlist-modify-public'):
+def getSpotifyConn(username=settings.SP_USERNAME, scope='user-read-private playlist-modify-private playlist-read-private playlist-modify-public'):
     '''
     get_spotify_conn -- connect to spotify
     '''
     token = sputil.prompt_for_user_token(username, scope)
     sp = spotipy.Spotify(auth=token)
+    print('Spotify user id: {0}'.format(sp.current_user()[u'id']))
     return sp
 
 def buildArtistDict(album, album_tracks, artist_dict, ap):
@@ -243,11 +244,11 @@ def getAlbumsFromNewReleases(sp):
     return uris
 
 def getAlbumsFromSortingHat():
-    response = urllib.request.urlopen('http://everynoise.com/spotify_new_releases.html')
-    html = response.read().decode("utf-8")
-    print(type(html))
-    #fromfile = open('C:\\Users\\Jesse\\Downloads\\20160101_SortingHat.html')
-    #html = fromfile.read()
+    #response = urllib.request.urlopen('http://everynoise.com/spotify_new_releases.html')
+    #html = response.read().decode("utf-8")
+    #print(type(html))
+    fromfile = open('/Users/jerdmann/Downloads/20160520_SortingHat.html')
+    html = fromfile.read()
     track_list = []
     artist_ranks = {}
     track_items = html.split('</div><div class=')
@@ -285,28 +286,28 @@ def updatePlaylist(sp, uri, track_list):
             end = len(track_list)
         if start == 0:
             try:
-                sp.user_playlist_replace_tracks(settings.SP_USERNAME, uri, track_list[start:end])
+                sp.user_playlist_replace_tracks(sp.current_user()[u'id'], uri, track_list[start:end])
             except:
-                sp = getSpotifyConn()
-                sp.user_playlist_replace_tracks(settings.SP_USERNAME, uri, track_list[start:end])
-            #sp.user_playlist_replace_tracks(settings.SP_USERNAME, uri, track_list[start:end])
+                sp = getSpotifyConn(username=settings.SP_USERNAME)
+                sp.user_playlist_replace_tracks(sp.current_user()[u'id'], uri, track_list[start:end])
+            #sp.user_playlist_replace_tracks(sp.current_user()[u'id'], uri, track_list[start:end])
         else:
             try:
-                sp.user_playlist_add_tracks(settings.SP_USERNAME, uri, track_list[start:end])
+                sp.user_playlist_add_tracks(sp.current_user()[u'id'], uri, track_list[start:end])
             except:
-                sp = getSpotifyConn()
-                sp.user_playlist_add_tracks(settings.SP_USERNAME, uri, track_list[start:end])
-            #sp.user_playlist_add_tracks(settings.SP_USERNAME, uri, track_list[start:end])
+                sp = getSpotifyConn(username=settings.SP_USERNAME)
+                sp.user_playlist_add_tracks(sp.current_user()[u'id'], uri, track_list[start:end])
+            #sp.user_playlist_add_tracks(sp.current_user()[u'id'], uri, track_list[start:end])
         start += 100
         end += 100
 
 def genPlaylist(sp, fc_tracks, singles_playlist_uri=None, selected_playlist_uri=None, jje_playlist_uris=None):
     if singles_playlist_uri == None:
-        playlist = sp.user_playlist_create(settings.SP_USERNAME, 'Sorting Hat Singles Selection: ' + args.pubdate)
+        playlist = sp.user_playlist_create(sp.current_user()[u'id'], 'Sorting Hat Singles Selection: ' + args.pubdate)
         singles_playlist_uri = playlist[u'uri']
 
     if selected_playlist_uri == None:
-        playlist = sp.user_playlist_create(settings.SP_USERNAME, 'Sorting Hat Best Guess Selection: ' + args.pubdate)
+        playlist = sp.user_playlist_create(sp.current_user()[u'id'], 'Sorting Hat Best Guess Selection: ' + args.pubdate)
         selected_playlist_uri = playlist[u'uri']
 
     for [type, playlist_uri] in list(zip(['singles', 'selected'], [singles_playlist_uri, selected_playlist_uri])):
@@ -351,7 +352,7 @@ def genPlaylist(sp, fc_tracks, singles_playlist_uri=None, selected_playlist_uri=
 #@lview.parallel()
 def processList(albums):
     print('Hello')
-    sp = getSpotifyConn()
+    sp = getSpotifyConn(username=settings.SP_USERNAME)
     album_count = 0
     for album in albums:
         try:
@@ -362,25 +363,25 @@ def processList(albums):
                 continue
             else:
                 #print('WTF is this?  ' + e)
-                sp = getSpotifyConn()
+                sp = getSpotifyConn(username=settings.SP_USERNAME)
                 success = False
                 #continue
         if success:
            album_count += 1
         else:
             albums.append(album)
-            sp = getSpotifyConn()
+            sp = getSpotifyConn(username=settings.SP_USERNAME)
         if album_count % 100 == 0:
-            sp = getSpotifyConn()
+            sp = getSpotifyConn(username=settings.SP_USERNAME)
 
 
 def processAlbum(album, sp, album_count):
-    #sp = getSpotifyConn()
+    #sp = getSpotifyConn(username=settings.SP_USERNAME)
     try:
         album_dets = sp.album(album.spotifyUri)
     except Exception as e:
         try:
-            print('Exception on ' + album.__str__())
+            print('Exception on ' + album.spotifyUri)
             album_dets = sp.album(album.spotifyUri)
         except Exception as e2:
             print(e2)
@@ -410,7 +411,7 @@ if __name__ == "__main__":
     start_time = datetime.datetime.now()
     args = parser.parse_args()
     print(args)
-    sp = getSpotifyConn()
+    sp = getSpotifyConn(username=settings.SP_USERNAME)
 
     fc_date = datetime.datetime.strptime('2016-05-20', '%Y-%m-%d')
     single_cutoff = fc_date - datetime.timedelta(days=120)
@@ -430,6 +431,7 @@ if __name__ == "__main__":
     results = getAlbumsFromSortingHat()
 
     processList(results)
+    print('List Processed')
     #results_range = []
     #for i in range(0, len(results), int(len(results)/len(rc.ids))):
     #    results_range.append(results[i:i+int(len(results)/len(rc.ids))])
