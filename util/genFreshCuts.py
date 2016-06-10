@@ -244,11 +244,11 @@ def getAlbumsFromNewReleases(sp):
     return uris
 
 def getAlbumsFromSortingHat():
-    #response = urllib.request.urlopen('http://everynoise.com/spotify_new_releases.html')
-    #html = response.read().decode("utf-8")
+    response = urllib.request.urlopen('http://everynoise.com/spotify_new_releases.html')
+    html = response.read().decode("utf-8")
     #print(type(html))
-    fromfile = open('/Users/jerdmann/Downloads/20160520_SortingHat.html')
-    html = fromfile.read()
+    #fromfile = open('/Users/jerdmann/Downloads/20160520_SortingHat.html')
+    #html = fromfile.read()
     track_list = []
     artist_ranks = {}
     track_items = html.split('</div><div class=')
@@ -413,7 +413,7 @@ if __name__ == "__main__":
     print(args)
     sp = getSpotifyConn(username=settings.SP_USERNAME)
 
-    fc_date = datetime.datetime.strptime('2016-05-20', '%Y-%m-%d')
+    fc_date = datetime.datetime.strptime('2016-06-10', '%Y-%m-%d')
     single_cutoff = fc_date - datetime.timedelta(days=120)
     print('FC Date: {0} - Singles Cutoff: {1}'.format(fc_date.strftime('%Y-%m-%d'), single_cutoff.strftime('%Y-%m-%d')))
 

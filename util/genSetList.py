@@ -325,9 +325,9 @@ if __name__ == "__main__":
     debug = False
     tracks = {}
     playlists = []
-    fresh_cuts_uri = 'spotify:user:audiobonsai:playlist:7cueWx9tZKjVkIOog9fJan'
-    fc_url = 'http://open.spotify.com/user/audiobonsai/playlist/7cueWx9tZKjVkIOog9fJan'
-    fc_date = datetime.datetime.strptime("05/06/2016", "%m/%d/%Y")
+    fresh_cuts_uri = 'spotify:user:audiobonsai:playlist:3YX3ViYUZd0RfzleqyUxlh'
+    fc_url = 'https://open.spotify.com/user/audiobonsai/playlist/3YX3ViYUZd0RfzleqyUxlh'
+    fc_date = datetime.datetime.strptime("06/03/2016", "%m/%d/%Y")
     username = settings.SP_USERNAME
     scope = 'user-read-private playlist-modify-private playlist-read-private playlist-modify-public'
     sp = get_spotify_conn(username, scope)
