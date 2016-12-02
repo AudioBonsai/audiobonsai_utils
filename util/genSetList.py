@@ -63,9 +63,9 @@ def parseList(sp, playlist, spots=10, tracks={}, week="MM/DD/YYYY", debug=False)
         uri = track[u'track'][u'uri']
         #print uri
         #print track[u'track'][u'available_markets']
-        if u'US' not in track[u'track'][u'available_markets']:
-            print('Skipping ' + track[u'track'][u'name'])#  + ' by ' + track[u'track'][u'artists'])
-            continue
+        #if u'US' not in track[u'track'][u'available_markets']:
+            #print('Skipping ' + track[u'track'][u'name'])#  + ' by ' + track[u'track'][u'artists'])
+            #continue
         #track_match = re.match('spotify:track:([a-z,A-Z,0-9]*)', uri)
         #votes_list.append(track_match.group(1))
         #votes_list.append(unicodedata.normalize('NFKD', uri).encode('ascii','ignore'))
@@ -185,7 +185,7 @@ def scoreVotes(userlist, tracks, fc_url, bonus=49, sotds=[4, 0, 3, 1, 5, 2, 6], 
         tracks[uri]['display_str'] = display_str
 
         if vote_count == 2:
-            score += 25
+            score += 49
         elif vote_count == 3:
             score += 49
         elif vote_count == 4:
@@ -325,14 +325,14 @@ if __name__ == "__main__":
     debug = False
     tracks = {}
     playlists = []
-    fresh_cuts_uri = 'spotify:user:audiobonsai:playlist:3YX3ViYUZd0RfzleqyUxlh'
-    fc_url = 'https://open.spotify.com/user/audiobonsai/playlist/3YX3ViYUZd0RfzleqyUxlh'
-    fc_date = datetime.datetime.strptime("06/03/2016", "%m/%d/%Y")
+    fresh_cuts_uri = 'spotify:user:audiobonsai:playlist:71ZL6uln6lPHUPwSqT3PnG'
+    fc_url = 'https://play.spotify.com/user/audiobonsai/playlist/71ZL6uln6lPHUPwSqT3PnG'
+    fc_date = datetime.datetime.strptime("09/30/2016", "%m/%d/%Y")
     username = settings.SP_USERNAME
     scope = 'user-read-private playlist-modify-private playlist-read-private playlist-modify-public'
     sp = get_spotify_conn(username, scope)
     print(sp.current_user())
-    for playlist, week in zip([settings.JESSE_TOP_TEN, settings.MOKSHA_TOP_TEN, settings.ADAM_TOP_TEN],#, settings.JESSE_TOP_TEN_2, settings.MOKSHA_TOP_TEN_2],
+    for playlist, week in zip([settings.JESSE_TOP_TEN, settings.MOKSHA_TOP_TEN],# settings.ADAM_TOP_TEN],#, settings.JESSE_TOP_TEN_2, settings.MOKSHA_TOP_TEN_2],
                               [fc_date, fc_date, fc_date]): #,
                                #datetime.datetime.strptime("10/16/2015", "%m/%d/%Y"), datetime.datetime.strptime("10/02/2015", "%m/%d/%Y")]):
         print("{}: {}".format(week.strftime("%A, %m/%d/%Y"), playlist))

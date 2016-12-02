@@ -296,7 +296,11 @@ def updatePlaylist(sp, uri, track_list):
                 sp.user_playlist_add_tracks(sp.current_user()[u'id'], uri, track_list[start:end])
             except:
                 sp = getSpotifyConn(username=settings.SP_USERNAME)
-                sp.user_playlist_add_tracks(sp.current_user()[u'id'], uri, track_list[start:end])
+                try:
+                    sp.user_playlist_add_tracks(sp.current_user()[u'id'], uri, track_list[start:end])
+                except:
+                    sp = getSpotifyConn(username=settings.SP_USERNAME)
+                    sp.user_playlist_add_tracks(sp.current_user()[u'id'], uri, track_list[start:end])
             #sp.user_playlist_add_tracks(sp.current_user()[u'id'], uri, track_list[start:end])
         start += 100
         end += 100
@@ -413,7 +417,7 @@ if __name__ == "__main__":
     print(args)
     sp = getSpotifyConn(username=settings.SP_USERNAME)
 
-    fc_date = datetime.datetime.strptime('2016-06-10', '%Y-%m-%d')
+    fc_date = datetime.datetime.strptime('2016-12-02', '%Y-%m-%d')
     single_cutoff = fc_date - datetime.timedelta(days=120)
     print('FC Date: {0} - Singles Cutoff: {1}'.format(fc_date.strftime('%Y-%m-%d'), single_cutoff.strftime('%Y-%m-%d')))
 
